@@ -31,7 +31,7 @@ SAMPLER_UNIGEN = 1
 SAMPLER_APPMC3 = 5
 SAMPLER_QUICKSAMPLER = 2
 SAMPLER_STS = 3
-SAMPLER_CUSTOM = 4
+SAMPLER_CMS = 4
 
 
 class RExtList:
@@ -39,6 +39,15 @@ class RExtList:
         self.countList = countList
         self.newVarList = newVarList
         self.oldLitLists = oldLitLists
+
+
+class SHACnf:
+    def __init__(self, formulaContent, numVar, numCls, solCount, indList):
+        self.formulaContent = formulaContent
+        self.numVar = numVar
+        self.numCls = numCls
+        self.solCount = solCount
+        self.indList = indList
 
 
 class SolutionRetriver:
@@ -60,8 +69,8 @@ class SolutionRetriver:
         if (samplerType == SAMPLER_STS):
             return SolutionRetriver.getSolutionFromSTS(*topass)
 
-        if (samplerType == SAMPLER_CUSTOM):
-            return SolutionRetriver.getSolutionFromCustomSampler(*topass_withseed)
+        if (samplerType == SAMPLER_CMS):
+            return SolutionRetriver.getSolutionFromCMSsampler(*topass_withseed)
 
         else:
             print("Error")
@@ -82,10 +91,11 @@ class SolutionRetriver:
 
         solList = []
         for line in lines:
-            if (line.strip().startswith('v')):
-                freq = int(line.strip().split(':')[-1])
+            line = line.strip()
+            if line.startswith('v'):
+                freq = int(line.split(':')[-1])
                 for i in range(freq):
-                    solList.append(line.strip().split(':')[0].replace('v', '').strip())
+                    solList.append(line.split(':')[0].replace('v', '').strip())
                     if (len(solList) == numSolutions):
                         break
                 if (len(solList) == numSolutions):
@@ -165,7 +175,7 @@ class SolutionRetriver:
         os.unlink(inputFile+'.samples')
         os.unlink(inputFile+'.samples.valid')
 
-        if (len(solList) != numSolutions):
+        if len(solList) != numSolutions:
             print("Did not find required number of solutions")
             exit(1)
         return solList
@@ -258,16 +268,38 @@ class SolutionRetriver:
         os.unlink(outputFile)
         return solList
 
-    # @CHANGE_HERE : please make changes in the below block of code
-    ''' this is the method where you could run your sampler for testing
-    Arguments : input file, number of solutions to be returned, list of independent variables
-    output : list of solutions '''
     @staticmethod
-    def getSolutionFromCustomSampler(inputFile, numSolutions, indVarList, newSeed):
+    def getSolutionFromCMSsampler(inputFile, numSolutions, indVarList, newSeed):
         solreturnList = []
+        solList = []
+        inputFileSuffix = inputFile.split('/')[-1][:-4]
+        outputFile = tempfile.gettempdir()+'/'+inputFileSuffix+".out"
+        cmd = "./samplers/cryptominisat5 --restart luby --maple 0 --verb 10 --nobansol"
+        cmd += " --scc 1 -n1 --presimp 0 --polar rnd --freq 0.9999 --random "
+        cmd += str(newSeed) + " --maxsol " + str(numSolutions) + " " + inputFile
+        cmd += " --dumpresult " + outputFile + " > /dev/null 2>&1"
 
-        ''' write your code here '''
+        os.system(cmd)
+        with open(outputFile, 'r') as f:
+            lines = f.readlines()
 
+        for j in range(len(lines)):
+            if(lines[j].strip() != 'SAT'):
+                sol = ""
+                x = lines[j].split(" ")
+                for y in indVarList:
+                    if str(y) in x:
+                        sol += ' '+str(y)
+                    if "-" + str(y) in x:
+                        sol += ' -'+str(y)
+                solList.append(sol)
+        solreturnList = solList
+        if len(solList) > numSolutions:
+            solreturnList = random.sample(solList, numSolutions)
+        if len(solList) < numSolutions:
+            print("cryptominisat5 Did not find required number of solutions")
+            exit(1)
+        os.unlink(outputFile)
         return solreturnList
 
 
@@ -341,7 +373,7 @@ def pushVar(variable, cnfClauses):
     return cnfClauses
 
 
-def getCNF(variable, binStr, sign, origTotalVars):
+def getCNF(variable, binStr, sign, origTotalVars, shaVars):
     cnfClauses = []
     binLen = len(binStr)
     if sign is False:
@@ -351,6 +383,8 @@ def getCNF(variable, binStr, sign, origTotalVars):
 
     for i in range(binLen):
         newVar = int(binLen-i+origTotalVars)
+        if i == 0:
+            chainVar = newVar
         if sign is False:
             newVar = -1*(binLen-i+origTotalVars)
 
@@ -358,11 +392,16 @@ def getCNF(variable, binStr, sign, origTotalVars):
             cnfClauses.append([newVar])
         else:
             cnfClauses = pushVar(newVar, cnfClauses)
+
+    if shaVars != 0:
+        for i in range(chainVar+2, shaVars+1):
+            cnfClauses.append([i])
+
     pushVar(variable, cnfClauses)
     return cnfClauses
 
 
-def constructChainFormula(originalVar, solCount, newVar, origTotalVars, invert):
+def constructChainFormula(originalVar, solCount, newVar, origTotalVars, invert, shaVars):
     assert type(solCount) == int
 
     binStr = str(bin(int(solCount)))[2:-1]
@@ -370,7 +409,7 @@ def constructChainFormula(originalVar, solCount, newVar, origTotalVars, invert):
     for _ in range(newVar-binLen-1):
         binStr = '0'+binStr
 
-    firstCNFClauses = getCNF(-int(originalVar), binStr, invert, origTotalVars)
+    firstCNFClauses = getCNF(-int(originalVar), binStr, invert, origTotalVars, shaVars)
     addedClauseNum = 0
     writeLines = ''
     for cl in firstCNFClauses:
@@ -383,7 +422,7 @@ def constructChainFormula(originalVar, solCount, newVar, origTotalVars, invert):
 
 
 # returns whether new file was created and the list of TMP+OLD independent variables
-def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, rExtList, indVarList):
+def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, rExtList, shaFlag, indVarList):
     # which variables are in pos/neg value in the sample
     sampleMap = {}
     for i in sampleSol.strip().split():
@@ -391,7 +430,6 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, rExtList, indVarLis
         if i != 0:
             if abs(i) not in indVarList:
                 continue
-
             sampleMap[abs(i)] = int(i/abs(i))
 
     # which variables are in pos/neg value in the uniform sample
@@ -413,12 +451,31 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, rExtList, indVarLis
     if diffIndex == -1:
         return False, None, None
 
+    if shaFlag:
+        shaVars = rExtList.numVar
+        numSHACls = rExtList.numCls
+        shaCInd = rExtList.indList
+        sumNewVar = shaVars  # shift amount is sumNewVar
+
+        shaCls = ''
+        for content in rExtList.formulaContent:
+            shaCls += content.replace("1", str(diffIndex+sumNewVar), 1)
+        shaCls += str(diffIndex+sumNewVar)+" 1 0\n"  # set var 1 in SHA
+        numSHACls += 1
+
+        countList = [rExtList.solCount]  # solution count
+        newVarList = [len(bin(rExtList.solCount))-2]  # precision
+        oldLitLists = [[abs(int(diffIndex))]]  # chain formula with respect to diffIndex
+
+        del rExtList
+        rExtList = RExtList(countList, newVarList, oldLitLists)
+    else:
+        # shift amount is sumNewVar
+        shaVars = 0
+        sumNewVar = int(sum(rExtList.newVarList))
+
     with open(inputFile, 'r') as f:
         lines = f.readlines()
-
-    # shift amount is sumNewVar
-    sumNewVar = int(sum(rExtList.newVarList))
-
     # emit the original CNF, but with shifted variables
     shiftedCNFStr = ''
     for line in lines:
@@ -473,7 +530,7 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, rExtList, indVarLis
                 addedClause, addedClauseNum = constructChainFormula(
                     sign*(abs(oldlit)+sumNewVar),
                     rExtList.countList[i], newvar, currentNumVar,
-                    invert)
+                    invert, shaVars)
 
             seenLits[oldlit] = True
             currentNumVar += newvar
@@ -488,12 +545,23 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, rExtList, indVarLis
     tempIndVarList = copy.copy(oldIndVarList)
     indIter = 1
     indStr = 'c ind '
-    for i in range(1, currentNumVar+1):
-        if indIter % 10 == 0:
-            indStr += ' 0\nc ind '
-        indStr += "%d " % i
-        indIter += 1
-        tempIndVarList.append(i)
+    if shaFlag:
+        for i in shaCInd:
+            if (indIter % 10 == 0):
+                indStr += ' 0\nc ind '
+            indStr += "%d " % i
+            indIter += 1
+            tempIndVarList.append(i)
+        currentNumVar = sumNewVar+numVar
+        numCls = numCls+numSHACls
+    else:
+        for i in range(1, currentNumVar+1):
+            if indIter % 10 == 0:
+                indStr += ' 0\nc ind '
+            indStr += "%d " % i
+            indIter += 1
+            tempIndVarList.append(i)
+        currentNumVar = currentNumVar+numVar
 
     for i in oldIndVarList:
         if indIter % 10 == 0:
@@ -503,17 +571,75 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, rExtList, indVarLis
     indStr += ' 0\n'
 
     # dump new CNF
+    # NOTE: comments in the middle of CNF files are *NOT ALLOWED*
+    #       as per specification!
     with open(tempFile, 'w') as f:
-        f.write('p cnf %d %d\n' % (currentNumVar+numVar, numCls))
+        f.write('p cnf %d %d\n' % (currentNumVar, numCls))
         f.write(indStr)
         f.write(solClause)
-        #f.write("c -- old CNF below -- \n")
+        # f.write("c -- old CNF below -- \n")
         f.write(shiftedCNFStr)
+        if shaFlag:
+            # f.write("c SHA content--\n")
+            f.write(shaCls)
 
-    #print("New file: ", tempFile)
-    #exit(0)
+    # print("New file: ", tempFile)
+    # exit(0)
 
     return True, tempIndVarList, oldIndVarList
+
+
+def readHardFormulaShakuni(shaRounds, shaMsgBits, fixedShaHashBits):
+        # did experiments with shakuni seed 23
+    cmd = "./counter --seed 23 --rounds " + str(shaRounds)
+    cmd + " --message-bits " + str(shaMsgBits)
+    cmd += " --hash-bits " + str(fixedShaHashBits) + " > tosample"
+
+    os.system(cmd)
+    templist = []
+    with open("tosample", 'r') as f:
+        lines = f.readlines()
+    os.unlink("tosample")
+
+    count = 0
+    indList = []
+    formulaContent = []
+    solCount = None
+    for line in lines:
+        line = line.strip()
+        if line.startswith('p cnf'):
+            numVar = int(line.split()[2])
+            numCls = int(line.split()[3])
+            continue
+
+        if line.startswith('c num_solutions'):
+            solCount = int(line.split()[2])
+            continue
+
+        if line.startswith('c ind'):
+            indList.extend(line.replace('c ind', '').replace(' 0', '').strip().replace('v ', '').split())
+            continue
+
+        if line.startswith('c '):
+            continue
+
+        if line.startswith("-1 "):
+            count = count+1
+        else:
+            formulaContent.append(line)
+
+    if solCount is None:
+        print("ERROR: did not find 'c num_solutions' in the output of shakuni")
+        exit(-1)
+
+    # set up indList
+    if len(indList) == 0:
+        indList = [int(x) for x in range(1, numVar+1)]
+    else:
+        indList = [int(x) for x in indList]
+    indList.remove(1)
+
+    return SHACnf(formulaContent, numVar, numCls-count, solCount, indList)
 
 
 class Experiment:
@@ -535,7 +661,7 @@ class Experiment:
             self.samplerString = 'QuickSampler'
         if samplerType == SAMPLER_STS:
             self.samplerString = 'STS'
-        if samplerType == SAMPLER_CUSTOM:
+        if samplerType == SAMPLER_CMS:
             self.samplerString = 'CustomSampler'
 
     # Returns True if uniform and False otherwise
@@ -573,37 +699,35 @@ class Experiment:
         else:
             return False
 
-    def one_experiment(self, experiment, j, i, numExperiments, tj):
+    def one_experiment(self, experiment, j, i, shaFlag, shaCNF):
         self.thresholdSolutions += self.numSolutions
         if self.thresholdSolutions < self.minSamples:
             return None, None
 
-        # generate a new seed value for every different (i,j,experiment)
-        newSeed = numExperiments*(i*tj+j)+experiment
         # get sampler's solutions
         sampleSol = SolutionRetriver.getSolutionFromSampler(
-            self.inputFile, 1, self.samplerType, self.indVarList, newSeed)
+            self.inputFile, 1, self.samplerType, self.indVarList, self.randseed)
         self.totalSolutionsGenerated += 1
 
         # get uniform sampler's solutions
         unifSol = SolutionRetriver.getSolutionFromUniform(
             self.inputFile, 1)
+        assert(len(unifSol) == len(sampleSol))
         self.totalUniformSamples += 1
-
-        rExtList = findWeightsForVariables(sampleSol, unifSol, self.numSolutions)
+        if shaFlag:
+            rExtList = shaCNF
+        else:
+            rExtList = findWeightsForVariables(sampleSol, unifSol, self.numSolutions)
         shakuniMix, tempIndVarList, oldIndVarList = constructNewCNF(
-            self.inputFile, self.tempFile, sampleSol[0], unifSol[0], rExtList, self.indVarList)
+            self.inputFile, self.tempFile, sampleSol[0], unifSol[0], rExtList, shaFlag, self.indVarList)
 
         # the two solutions were the same, couldn't construct CNF
         if not shakuniMix:
             return False, None
 
-        # seed update
-        newSeed = newSeed + 1
-
         # get sampler's solutions
         solList = SolutionRetriver.getSolutionFromSampler(
-            self.tempFile, self.numSolutions, self.samplerType, tempIndVarList, newSeed)
+            self.tempFile, self.numSolutions, self.samplerType, tempIndVarList, self.randseed)
         os.unlink(self.tempFile)
         self.totalSolutionsGenerated += self.numSolutions
 
@@ -628,18 +752,21 @@ class Experiment:
 def barbarik():
     parser = argparse.ArgumentParser()
     parser.add_argument('--eta', type=float, help="default = 0.9", default=0.9, dest='eta')
-    parser.add_argument('--epsilon', type=float, help="default = 0.6", default=0.6, dest='epsilon')
+    parser.add_argument('--epsilon', type=float, help="default = 0.3", default=0.3, dest='epsilon')
     parser.add_argument('--delta', type=float, help="default = 0.05", default=0.05, dest='delta')
     parser.add_argument('--sampler', type=int, help=str(SAMPLER_UNIGEN)+" for UniGen;\n" +
                         str(SAMPLER_QUICKSAMPLER)+" for QuickSampler;\n"+str(SAMPLER_STS)+" for STS;\n", default=SAMPLER_STS, dest='sampler')
     parser.add_argument('--reverse', type=int, default=0, help="order to search in", dest='searchOrder')
-    parser.add_argument('--minSamples', type=int, default=0, help="min samples", dest='minSamples')
-    parser.add_argument('--maxSamples', type=int, default=sys.maxsize, help="max samples", dest='maxSamples')
+    parser.add_argument('--minsamp', type=int, default=0, help="min samples", dest='minSamples')
+    parser.add_argument('--maxsamp', type=int, default=sys.maxsize, help="max samples", dest='maxSamples')
     parser.add_argument('--seed', type=int, required=True, dest='seed')
     parser.add_argument('--verb', type=int, dest='verbose')
     parser.add_argument('--exp', type=int, help="number of experiments", dest='exp', default=1)
     parser.add_argument("input", help="input file")
-
+    parser.add_argument('--shamix', type=int, default=1, help="SHA-1 usage. Set to 0 for no SHA-1", dest='shaFlag')
+    parser.add_argument('--rounds', type=int, default=30, help="SHA-1 : Number of rounds (10-80)", dest='shaRounds')
+    parser.add_argument('--msgbits', type=int, default=495, help="SHA-1 : Number of fixed message bits (0-512) ", dest='shaMsgBits')
+    parser.add_argument('--hashbits', type=int, default=6, help="SHA-1 : Number of fixed hash bits (0-160) ", dest='fixedShaHashBits')
     args = parser.parse_args()
     inputFile = args.input
 
@@ -649,17 +776,22 @@ def barbarik():
     numExperiments = args.exp
     if numExperiments == -1:
         numExperiments = sys.maxsize
-    searchOrder = args.searchOrder
-    verbose = args.verbose
+    if 2*epsilon >= eta:
+        print(" 2 * epsilon must be less than eta")
+        exit(1)
+
+    shaCNF = []
+    if args.shaFlag:
+        shaCNF = readHardFormulaShakuni(args.shaRounds, args.shaMsgBits, args.fixedShaHashBits)
 
     seed = args.seed
     random.seed(seed)
     minSamples = args.minSamples
     maxSamples = args.maxSamples
 
-    totalLoops = int(math.ceil(math.log(2.0/(eta+epsilon), 2))+1)
+    totalLoops = int(math.ceil(math.log(2.0/(eta+2*epsilon), 2))+1)
     listforTraversal = range(totalLoops, 0, -1)
-    if searchOrder == 1:
+    if args.searchOrder == 1:
         listforTraversal = range(1, totalLoops+1, 1)
 
     exp = Experiment(
@@ -673,27 +805,29 @@ def barbarik():
         exp.totalUniformSamples = 0
         exp.thresholdSolutions = 0
         for j in listforTraversal:
-            tj = math.ceil(math.pow(2, j)*(epsilon+eta)/((eta-epsilon)**2)*math.log(4.0/(eta+epsilon), 2)*(4*math.e/(math.e-1)*math.log(1.0/delta)))
-            beta = (math.pow(2, j-1)+1)*(eta + epsilon)*1.0/(4+(epsilon+eta)*(math.pow(2, j-1) - 1))
-            gamma = (beta-epsilon)/4
-            constantFactor = math.ceil(1/(9*gamma*gamma))
-            boundFactor = math.log((16)*(math.e/(math.e-1))*(1/((eta-epsilon)**2))*math.log(4/(eta+epsilon), 2)*math.log(1/delta), 2)
+            # TODO all these euqations have been changed. ALL.
+            # There is absolutely no reason given to ANY of this changes.
+            tj = math.ceil(math.pow(2, j)*(2*epsilon+eta)/((eta-2*epsilon)**2)*math.log(4.0/(eta+2*epsilon), 2)*(4*math.e/(math.e-1)*math.log(1.0/delta)))
+            beta = (math.pow(2, j-1)+1)*(eta + 2*epsilon)*1.0/(4+(2*epsilon+eta)*(math.pow(2, j-1) - 1))
+            gamma = (beta-2*epsilon)/4
+            constantFactor = math.ceil(1/(8.79*gamma*gamma))
+            boundFactor = math.log((16)*(math.e/(math.e-1))*(1/((eta-2*epsilon)**2))*math.log(4/(eta+2*epsilon), 2)*math.log(1/delta), 2)
             print("constantFactor:{:<4} boundFactor: {:<20} logBoundFactor: {:<20}".format(
                 constantFactor, boundFactor, math.log(boundFactor, 2)))
             print("tj: {:<6} totalLoops: {:<5} beta: {:<10} epsilon: {:<10}".format(
                 tj, totalLoops, beta, epsilon))
 
             exp.numSolutions = int(math.ceil(constantFactor*boundFactor))
-            exp.loThresh = int((exp.numSolutions*1.0/2)*(1-(beta+epsilon)/2))
-            exp.hiThresh = int((exp.numSolutions*1.0/2)*(1+(beta+epsilon)/2))
+            exp.loThresh = int((exp.numSolutions*1.0/2)*(1-(beta+2*epsilon)/2))
+            exp.hiThresh = int((exp.numSolutions*1.0/2)*(1+(beta+2*epsilon)/2))
             print("numSolutions: {:<5} loThresh:{:<6} hiThresh: {:<6}".format(
                 exp.numSolutions, exp.loThresh, exp.hiThresh))
 
             i = 0
-            breakExperiment = False
-            while i < int(tj) and not breakExperiment:
+            while i < tj and not breakExperiment:
                 i += 1
-                ok, breakExperiment = exp.one_experiment(experiment, j, i, numExperiments, tj)
+                exp.randseed = int((tj*j)+i)
+                ok, breakExperiment = exp.one_experiment(experiment, j, i, args.shaFlag, shaCNF)
 
                 if ok is None:
                     continue
