@@ -699,7 +699,7 @@ class Experiment:
         else:
             return False
 
-    def one_experiment(self, experiment, j, i, shaFlag, shaCNF):
+    def one_experiment(self, experiment, j, i, shaCNF):
         self.thresholdSolutions += self.numSolutions
         if self.thresholdSolutions < self.minSamples:
             return None, None
@@ -714,12 +714,13 @@ class Experiment:
             self.inputFile, 1)
         assert(len(unifSol) == len(sampleSol))
         self.totalUniformSamples += 1
-        if shaFlag:
+        if shaCNF is not None:
             rExtList = shaCNF
         else:
             rExtList = findWeightsForVariables(sampleSol, unifSol, self.numSolutions)
         shakuniMix, tempIndVarList, oldIndVarList = constructNewCNF(
-            self.inputFile, self.tempFile, sampleSol[0], unifSol[0], rExtList, shaFlag, self.indVarList)
+            self.inputFile, self.tempFile, sampleSol[0], unifSol[0], rExtList,
+            shaCNF is not None, self.indVarList)
 
         # the two solutions were the same, couldn't construct CNF
         if not shakuniMix:
@@ -780,7 +781,7 @@ def barbarik():
         print(" 2 * epsilon must be less than eta")
         exit(1)
 
-    shaCNF = []
+    shaCNF = None
     if args.shaFlag:
         shaCNF = readHardFormulaShakuni(args.shaRounds, args.shaMsgBits, args.fixedShaHashBits)
 
@@ -827,7 +828,7 @@ def barbarik():
             while i < tj and not breakExperiment:
                 i += 1
                 exp.randseed = int((tj*j)+i)
-                ok, breakExperiment = exp.one_experiment(experiment, j, i, args.shaFlag, shaCNF)
+                ok, breakExperiment = exp.one_experiment(experiment, j, i, shaCNF)
 
                 if ok is None:
                     continue
