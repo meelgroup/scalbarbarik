@@ -718,6 +718,7 @@ class Experiment:
             rExtList = shaCNF
         else:
             rExtList = findWeightsForVariables(sampleSol, unifSol, self.numSolutions)
+
         shakuniMix, tempIndVarList, oldIndVarList = constructNewCNF(
             self.inputFile, self.tempFile, sampleSol[0], unifSol[0], rExtList,
             shaCNF is not None, self.indVarList)
