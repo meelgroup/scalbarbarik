@@ -478,9 +478,8 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaConf, s
 
         countList = [chainFormulaConf.solCount]  # solution count
         newVarList = [len(bin(chainFormulaConf.solCount))-2]  # precision
-        indicatorLits = [[abs(diffIndex)], [abs(diffIndex)]]  # chain formula with respect to diffIndex
+        indicatorLits = [[abs(diffIndex)]]  # chain formula with respect to diffIndex
 
-        del chainFormulaConf
         chainFormulaConf = ChainFormulaSetup(countList, newVarList, indicatorLits)
     else:
         # shift amount is sumNewVar
@@ -784,8 +783,8 @@ def barbarik():
     parser.add_argument('--exp', type=int, help="number of experiments", dest='exp', default=1)
     parser.add_argument("input", help="input file")
     parser.add_argument('--shamix', type=int, default=1, help="SHA-1 usage. Set to 0 for no SHA-1", dest='shaFlag')
-    parser.add_argument('--rounds', type=int, default=30, help="SHA-1 : Number of rounds (10-80)", dest='shaRounds')
-    parser.add_argument('--msgbits', type=int, default=495, help="SHA-1 : Number of fixed message bits (0-512) ", dest='shaMsgBits')
+    parser.add_argument('--rounds', type=int, default=10, help="SHA-1 : Number of rounds (10-80)", dest='shaRounds')
+    parser.add_argument('--msgbits', type=int, default=498, help="SHA-1 : Number of fixed message bits (0-512) ", dest='shaMsgBits')
     parser.add_argument('--hashbits', type=int, default=6, help="SHA-1 : Number of fixed hash bits (0-160) ", dest='fixedShaHashBits')
     args = parser.parse_args()
     inputFile = args.input
