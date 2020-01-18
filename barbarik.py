@@ -430,7 +430,7 @@ def constructChainFormula(originalVar, solCount, newVar, origTotalVars, invert, 
 
 
 # returns whether new file was created and the list of TMP+OLD independent variables
-def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaSetup, shaFlag, indVarList):
+def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaConf, shaFlag, indVarList):
     # which variables are in pos/neg value in the sample
     sampleVal = {}
     for i in sampleSol.strip().split():
@@ -460,28 +460,33 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaSetup, 
     if diffIndex == -1:
         return False, None, None
 
+    shaCls = ''
     if shaFlag:
-        shaVars = chainFormulaSetup.numVar
-        numSHACls = chainFormulaSetup.numCls
-        shaCInd = chainFormulaSetup.indList
+        shaVars = chainFormulaConf.numVar
+        numSHACls = chainFormulaConf.numCls
+        shaCInd = chainFormulaConf.indList
         sumNewVar = shaVars  # shift amount is sumNewVar
 
-        shaCls = ''
-        for content in chainFormulaSetup.formulaContent:
-            shaCls += content.replace("1", str(diffIndex+sumNewVar), 1)
-        shaCls += str(diffIndex+sumNewVar)+" 1 0\n"  # set var 1 in SHA
+        newvar = diffIndex+sumNewVar
+        for content in chainFormulaConf.formulaContent:
+            # TODO clean up
+            # replaces leading "1" with
+            shaCls += content.replace("1", str(newvar), 1)
+            numSHACls += 1
+        shaCls += "%d 1 0\n" % newvar  # set var 1 in SHA-1
         numSHACls += 1
 
-        countList = [chainFormulaSetup.solCount]  # solution count
-        newVarList = [len(bin(chainFormulaSetup.solCount))-2]  # precision
-        oldLitLists = [[abs(int(diffIndex))]]  # chain formula with respect to diffIndex
+        countList = [chainFormulaConf.solCount]  # solution count
+        newVarList = [len(bin(chainFormulaConf.solCount))-2]  # precision
+        indicatorLits = [[abs(diffIndex)], [abs(diffIndex)]]  # chain formula with respect to diffIndex
 
-        del chainFormulaSetup
-        chainFormulaSetup = chainFormulaSetup (countList, newVarList, oldLitLists)
+        del chainFormulaConf
+        chainFormulaConf = ChainFormulaSetup(countList, newVarList, indicatorLits)
     else:
         # shift amount is sumNewVar
+        numSHACls = 0
         shaVars = 0
-        sumNewVar = sum(chainFormulaSetup.newVarList)
+        sumNewVar = sum(chainFormulaConf.newVarList)
 
     with open(inputFile, 'r') as f:
         lines = f.readlines()
@@ -523,18 +528,18 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaSetup, 
 
     ##########
     # We add the N number of chain formulas
-    # where chainFormulaSetup.indicatorLits must be of size 2
-    # and len(chainFormulaSetup.indicatorLits) == len(chainFormulaSetup.newVarList)
+    # where chainFormulaConf.indicatorLits must be of size 2
+    # and len(chainFormulaConf.indicatorLits) == len(chainFormulaConf.newVarList)
     # Adding K soluitons over Z variables, where
-    #    Z = chainFormulaSetup.newVarList[k]
-    #    K = chainFormulaSetup.countList[k]
+    #    Z = chainFormulaConf.newVarList[k]
+    #    K = chainFormulaConf.countList[k]
     ##########
     invert = True
     seenLits = {}
-    for indicLits in chainFormulaSetup.indicatorLits:   # loop runs twice
+    for indicLits in chainFormulaConf.indicatorLits:   # loop runs twice
         currentNumVar = 0
         for i in range(len(indicLits)):
-            newvar = chainFormulaSetup.newVarList[i]
+            newvar = chainFormulaConf.newVarList[i]
             indicLit = indicLits[i]
             addedClause = ''
             addedClauseNum = 0
@@ -543,8 +548,8 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaSetup, 
             if indicLit not in seenLits:
                 sign = int(indicLit/abs(indicLit))
                 addedClause, addedClauseNum = constructChainFormula(
-                    sign*(abs(oldlit)+sumNewVar),
-                    chainFormulaSetup.countList[i], newvar, currentNumVar,
+                    sign*(abs(indicLit)+sumNewVar),
+                    chainFormulaConf.countList[i], newvar, currentNumVar,
                     invert, shaVars)
 
             seenLits[indicLit] = True
@@ -560,30 +565,30 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaSetup, 
     tempIndVarList = copy.copy(oldIndVarList)
     indIter = 1
     indStr = 'c ind '
-    if shaFlag:
-        for i in shaCInd:
-            if (indIter % 10 == 0):
-                indStr += ' 0\nc ind '
-            indStr += "%d " % i
-            indIter += 1
-            tempIndVarList.append(i)
-        currentNumVar = sumNewVar+numVar
-        numCls = numCls+numSHACls
-    else:
-        for i in range(1, currentNumVar+1):
-            if indIter % 10 == 0:
-                indStr += ' 0\nc ind '
-            indStr += "%d " % i
-            indIter += 1
-            tempIndVarList.append(i)
-        currentNumVar = currentNumVar+numVar
 
+    # new independent var list
+    if shaFlag:
+        goThrough = shaCInd
+    else:
+        goThrough = range(1, currentNumVar+1)
+    for i in goThrough:
+        if indIter % 10 == 0:
+            indStr += ' 0\nc ind '
+        indStr += "%d " % i
+        indIter += 1
+        tempIndVarList.append(i)
+
+    # old independent var list
     for i in oldIndVarList:
         if indIter % 10 == 0:
             indStr += ' 0\nc ind '
         indStr += "%d " % i
         indIter += 1
     indStr += ' 0\n'
+
+    # update vars, clauses
+    currentNumVar = sumNewVar+numVar
+    numCls += numSHACls
 
     # dump new CNF
     # NOTE: comments in the middle of CNF files are *NOT ALLOWED*
@@ -594,9 +599,8 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaSetup, 
         f.write(solClause)
         # f.write("c -- old CNF below -- \n")
         f.write(shiftedCNFStr)
-        if shaFlag:
-            # f.write("c SHA content--\n")
-            f.write(shaCls)
+        # f.write("c SHA content--\n")
+        f.write(shaCls)
 
     # print("New file: ", tempFile)
     # exit(0)
@@ -729,12 +733,12 @@ class Experiment:
         assert(len(unifSol) == len(sampleSol))
         self.totalUniformSamples += 1
         if shaCNF is not None:
-            rExtList = shaCNF
+            chainFormulaConf = shaCNF
         else:
-            rExtList = findWeightsForVariables(sampleSol, unifSol, self.numSolutions)
+            chainFormulaConf = chainFormulaSetup(sampleSol, unifSol, self.numSolutions)
 
         shakuniMix, tempIndVarList, oldIndVarList = constructNewCNF(
-            self.inputFile, self.tempFile, sampleSol[0], unifSol[0], chainFormulaSetup,
+            self.inputFile, self.tempFile, sampleSol[0], unifSol[0], chainFormulaConf,
             shaCNF is not None, self.indVarList)
 
         # the two solutions were the same, couldn't construct CNF
