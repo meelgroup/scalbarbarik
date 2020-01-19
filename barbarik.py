@@ -743,6 +743,11 @@ class Experiment:
             return False
 
     def one_experiment(self, experiment, j, i, shaCNF):
+        """This funciton returns
+        FALSE, x: the two samples were the same, we have to REDO experiment
+        NONE, x: too few samples, PASS
+        TRUE, x: experiment ran, success is in "x"
+        """
         self.thresholdSolutions += self.numSolutions
         if self.thresholdSolutions < self.minSamples:
             return None, None
