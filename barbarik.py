@@ -509,7 +509,6 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaConf, s
             sign = int(x/abs(x))
             shiftedCNFStr += "%d " % (sign*(abs(x)+sumNewVar))
         shiftedCNFStr += ' 0\n'
-    del i
 
     # Fixing the solution based on splittingVar
     # X = sigma1 OR X = singma2
