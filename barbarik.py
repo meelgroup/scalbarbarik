@@ -284,7 +284,7 @@ class SolutionRetriver:
             lines = f.readlines()
 
         for j in range(len(lines)):
-            if(lines[j].strip() != 'SAT'):
+            if lines[j].strip() != 'SAT':
                 sol = ""
                 x = lines[j].split(" ")
                 for y in indVarList:
