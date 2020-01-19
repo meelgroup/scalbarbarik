@@ -32,6 +32,7 @@ SAMPLER_APPMC3 = 5
 SAMPLER_QUICKSAMPLER = 2
 SAMPLER_STS = 3
 SAMPLER_CMS = 4
+verbosity = False
 
 
 class ChainFormulaSetup:
@@ -84,6 +85,8 @@ class SolutionRetriver:
 
         cmd = './samplers/unigen --samples='+str(numSolutions)
         cmd += ' ' + inputFile + ' ' + str(tempOutputFile) + ' > /dev/null 2>&1'
+        if verbosity > 0:
+            print("cmd: ", cmd)
         os.system(cmd)
 
         with open(tempOutputFile, 'r') as f:
@@ -116,7 +119,8 @@ class SolutionRetriver:
         cmd = './samplers/approxmc3 -s ' + str(newSeed) + ' -v 0 --samples ' + str(numSolutions)
         cmd += ' --sampleout ' + str(tempOutputFile)
         cmd += ' ' + inputFile + ' > /dev/null 2>&1'
-        # print("Calling: '%s'" % cmd)
+        if verbosity > 0:
+            print("cmd: ", cmd)
         os.system(cmd)
 
         with open(tempOutputFile, 'r') as f:
@@ -143,7 +147,10 @@ class SolutionRetriver:
     @staticmethod
     def getSolutionFromQuickSampler(inputFile, numSolutions, indVarList):
         cmd = "./samplers/quicksampler -n "+str(numSolutions*5)+' '+str(inputFile)+' > /dev/null 2>&1'
+        if verbosity > 0:
+            print("cmd: ", cmd)
         os.system(cmd)
+
         cmd = "./samplers/z3 "+str(inputFile)+' > /dev/null 2>&1'
         os.system(cmd)
         if (numSolutions > 1):
@@ -189,6 +196,8 @@ class SolutionRetriver:
         inputFileSuffix = inputFile.split('/')[-1][:-4]
         tempOutputFile = tempfile.gettempdir()+'/'+inputFileSuffix+".out"
         cmd = './spur -q -s '+str(numSolutions)+' -out '+str(tempOutputFile)+' -cnf '+str(inputFile)
+        if verbosity > 0:
+            print("cmd: ", cmd)
         os.system(cmd)
 
         with open(tempOutputFile, 'r') as f:
@@ -228,10 +237,13 @@ class SolutionRetriver:
         inputFileSuffix = inputFile.split('/')[-1][:-4]
         outputFile = tempfile.gettempdir()+'/'+inputFileSuffix+".out"
         cmd = './samplers/STS -k='+str(kValue)+' -nsamples='+str(samplingRounds)+' '+str(inputFile)+' > '+str(outputFile)
+        if verbosity > 0:
+            print("cmd: ", cmd)
         os.system(cmd)
-        f = open(outputFile, 'r')
-        lines = f.readlines()
-        f.close()
+
+        with open(outputFile, 'r') as f:
+            lines = f.readlines()
+
         solList = []
         shouldStart = False
         baseList = {}
@@ -611,6 +623,8 @@ def readHardFormulaShakuni(shaRounds, shaMsgBits, fixedShaHashBits):
     cmd = "./counter --seed 23 --rounds " + str(shaRounds)
     cmd += " --message-bits " + str(shaMsgBits)
     cmd += " --hash-bits " + str(fixedShaHashBits) + " > tosample"
+    if verbosity > 0:
+        print("cmd: ", cmd)
 
     os.system(cmd)
     templist = []
@@ -791,6 +805,8 @@ def barbarik():
     eta = args.eta
     epsilon = args.epsilon
     delta = args.delta
+    global verbosity
+    verbosity = args.verbose
     numExperiments = args.exp
     if numExperiments == -1:
         numExperiments = sys.maxsize
