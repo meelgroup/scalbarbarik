@@ -236,7 +236,8 @@ class SolutionRetriver:
         samplingRounds = numSolutions/kValue + 1
         inputFileSuffix = inputFile.split('/')[-1][:-4]
         outputFile = tempfile.gettempdir()+'/'+inputFileSuffix+".out"
-        cmd = './samplers/STS -k='+str(kValue)+' -nsamples='+str(samplingRounds)+' '+str(inputFile)+' > '+str(outputFile)
+        cmd = './samplers/STS -k='+str(kValue)+' -nsamples='+str(samplingRounds)+' '+str(inputFile)
+        cmd += ' > '+str(outputFile)
         if verbosity > 0:
             print("cmd: ", cmd)
         os.system(cmd)
@@ -282,29 +283,36 @@ class SolutionRetriver:
 
     @staticmethod
     def getSolutionFromCMSsampler(inputFile, numSolutions, indVarList, newSeed):
-        solreturnList = []
-        solList = []
         inputFileSuffix = inputFile.split('/')[-1][:-4]
         outputFile = tempfile.gettempdir()+'/'+inputFileSuffix+".out"
         cmd = "./samplers/cryptominisat5 --restart luby --maple 0 --verb 10 --nobansol"
-        cmd += " --scc 1 -n1 --presimp 0 --polar rnd --freq 0.9999 --random "
-        cmd += str(newSeed) + " --maxsol " + str(numSolutions) + " " + inputFile
+        cmd += " --scc 1 -n1 --presimp 0 --polar rnd --freq 0.9999 "
+        cmd += " --random " + str(newSeed) + " --maxsol " + str(numSolutions)
+        cmd += " " + inputFile
         cmd += " --dumpresult " + outputFile + " > /dev/null 2>&1"
 
+        if verbosity > 0:
+            print("cmd: ", cmd)
         os.system(cmd)
+
         with open(outputFile, 'r') as f:
             lines = f.readlines()
 
-        for j in range(len(lines)):
-            if lines[j].strip() != 'SAT':
-                sol = ""
-                x = lines[j].split(" ")
-                for y in indVarList:
-                    if str(y) in x:
-                        sol += ' '+str(y)
-                    if "-" + str(y) in x:
-                        sol += ' -'+str(y)
-                solList.append(sol)
+        solList = []
+        for line in lines:
+            if line.strip() == 'SAT':
+                continue
+
+            sol = ""
+            lits = line.split(" ")
+            for y in indVarList:
+                if str(y) in lits:
+                    sol += ' ' + str(y)
+
+                if "-" + str(y) in lits:
+                    sol += ' -' + str(y)
+            solList.append(sol)
+
         solreturnList = solList
         if len(solList) > numSolutions:
             solreturnList = random.sample(solList, numSolutions)
@@ -338,7 +346,7 @@ def parseIndSupport(indSupportFile):
     return indList
 
 
-def chainFormulaSetup(sampleSol, unifSol, numSolutions):
+def setupChainFormula(sampleSol, unifSol, numSolutions):
     # number of solutions for each: k1, k2, k3
     # TODO rename to chainSolutions
     countList = [5, 5, 5]
@@ -347,9 +355,7 @@ def chainFormulaSetup(sampleSol, unifSol, numSolutions):
     # TODO rename to chainVars
     newVarList = [4, 4, 4]
 
-    ##########
     # clean up the solutions
-    ##########
     sampleSol = sampleSol.strip()
     if sampleSol.endswith(' 0'):
         sampleSol = sampleSol[:-2]
@@ -365,7 +371,7 @@ def chainFormulaSetup(sampleSol, unifSol, numSolutions):
         newVarList.append(6)
     assert len(countList) == len(newVarList)
 
-    # picking selector literals, i.e. k1, k2, k3, randomly
+    # picking selector literals, i.e. k1, k2, k3, kN randomly
     sampleLitList = random.sample(sampleSol.split(), len(countList))
     unifLitList = []
     unifSolMap = unifSol.split()
@@ -741,13 +747,13 @@ class Experiment:
         self.totalSolutionsGenerated += 1
 
         # get uniform sampler's solutions
-        unifSol = SolutionRetriver.getSolutionFromUniform(self.inputFile, 1)
+        unifSol = SolutionRetriver.getSolutionFromUniform(self.inputFile, 1, self.randseed)
         assert(len(unifSol) == len(sampleSol))
         self.totalUniformSamples += 1
         if shaCNF is not None:
             chainFormulaConf = shaCNF
         else:
-            chainFormulaConf = chainFormulaSetup(sampleSol, unifSol, self.numSolutions)
+            chainFormulaConf = setupChainFormula(sampleSol, unifSol, self.numSolutions)
 
         shakuniMix, tempIndVarList, oldIndVarList = constructNewCNF(
             self.inputFile, self.tempFile, sampleSol[0], unifSol[0], chainFormulaConf,
