@@ -798,53 +798,25 @@ class Experiment:
         return True, False
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--eta', type=float, help="default = 0.9", default=0.9, dest='eta')
-    parser.add_argument('--epsilon', type=float, help="default = 0.3", default=0.3, dest='epsilon')
-    parser.add_argument('--delta', type=float, help="default = 0.05", default=0.05, dest='delta')
-    parser.add_argument('--sampler', type=int, help=str(SAMPLER_UNIGEN)+" for UniGen;\n" +
-                        str(SAMPLER_QUICKSAMPLER)+" for QuickSampler;\n"+str(SAMPLER_STS)+" for STS;\n", default=SAMPLER_STS, dest='sampler')
-    parser.add_argument('--reverse', type=int, default=0, help="order to search in", dest='searchOrder')
-    parser.add_argument('--minsamp', type=int, default=0, help="min samples", dest='minSamples')
-    parser.add_argument('--maxsamp', type=int, default=sys.maxsize, help="max samples", dest='maxSamples')
-    parser.add_argument('--seed', type=int, required=True, dest='seed')
-    parser.add_argument('--verb', type=int, dest='verbose')
-    parser.add_argument('--debug', type=int, dest='debug')
-    parser.add_argument('--exp', type=int, help="number of experiments", dest='exp', default=1)
-    parser.add_argument("input", help="input file")
-    parser.add_argument('--shamix', type=int, default=1, help="SHA-1 usage. Set to 0 for no SHA-1", dest='shaFlag')
-    parser.add_argument('--rounds', type=int, default=10, help="SHA-1 : Number of rounds (10-80)", dest='shaRounds')
-    parser.add_argument('--msgbits', type=int, default=498, help="SHA-1 : Number of fixed message bits (0-512) ", dest='shaMsgBits')
-    parser.add_argument('--hashbits', type=int, default=6, help="SHA-1 : Number of fixed hash bits (0-160) ", dest='fixedShaHashBits')
-    args = parser.parse_args()
-    inputFile = args.input
+def barbarik(eta, epsilon, delta, numExperiments, minSamples, maxSamples,
+             shaFlag, seed, sampler, inputFile, searchOrder,
+             shaRounds, shaMsgBits, fixedShaHashBits):
 
-    eta = args.eta
-    epsilon = args.epsilon
-    delta = args.delta
-
-    numExperiments = args.exp
     if numExperiments == -1:
         numExperiments = sys.maxsize
     if 2*epsilon >= eta:
         print(" 2 * epsilon must be less than eta")
         exit(1)
 
-    shaCNF = None
-    seed = args.seed
     random.seed(seed)
-    minSamples = args.minSamples
-    maxSamples = args.maxSamples
-
     totalLoops = int(math.ceil(math.log(2.0/(eta+2*epsilon), 2))+1)
     listforTraversal = range(totalLoops, 0, -1)
-    if args.searchOrder == 1:
+    if searchOrder == 1:
         listforTraversal = range(1, totalLoops+1, 1)
 
     exp = Experiment(
         minSamples=minSamples, maxSamples=maxSamples, inputFile=inputFile,
-        samplerType=args.sampler)
+        samplerType=sampler)
 
     for experiment in range(numExperiments):
         print("Experiment: {:<5} of {:>5}".format(experiment, numExperiments))
@@ -876,16 +848,18 @@ if __name__ == "__main__":
                 i += 1
                 exp.randseed = int((tj*j)+i)
 
-                if args.shaFlag:
+                shaCNF = None
+                if shaFlag:
                     shaCNF = readHardFormulaShakuni(
-                        args.shaRounds, args.shaMsgBits,
-                        args.fixedShaHashBits, exp.randseed)
+                        shaRounds, shaMsgBits,
+                        fixedShaHashBits, exp.randseed)
 
                 ok, breakExperiment = exp.one_experiment(experiment, j, i, shaCNF)
-
+                # too few samples, skip the experiment
                 if ok is None:
                     continue
 
+                # the two samples were the same, let's redo the experiment
                 if not ok:
                     i -= 1
                     continue
@@ -902,3 +876,42 @@ if __name__ == "__main__":
                 exp.totalUniformSamples, experiment))
 
         breakExperiment = False
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--eta', type=float, help="default = 0.9", default=0.9, dest='eta')
+    parser.add_argument('--epsilon', type=float, help="default = 0.3", default=0.3, dest='epsilon')
+    parser.add_argument('--delta', type=float, help="default = 0.05", default=0.05, dest='delta')
+    parser.add_argument('--sampler', type=int, help=str(SAMPLER_UNIGEN)+" for UniGen;\n" +
+                        str(SAMPLER_QUICKSAMPLER)+" for QuickSampler;\n"+str(SAMPLER_STS)+" for STS;\n", default=SAMPLER_STS, dest='sampler')
+    parser.add_argument('--reverse', type=int, default=0, help="order to search in", dest='searchOrder')
+    parser.add_argument('--minsamp', type=int, default=0, help="min samples", dest='minSamples')
+    parser.add_argument('--maxsamp', type=int, default=sys.maxsize, help="max samples", dest='maxSamples')
+    parser.add_argument('--seed', type=int, required=True, dest='seed')
+    parser.add_argument('--verb', type=int, dest='verbose')
+    parser.add_argument('--debug', type=int, dest='debug')
+    parser.add_argument('--exp', type=int, help="number of experiments", dest='exp', default=1)
+    parser.add_argument("input", help="input file")
+    parser.add_argument('--shamix', type=int, default=1, help="SHA-1 usage. Set to 0 for no SHA-1", dest='shaFlag')
+    parser.add_argument('--rounds', type=int, default=10, help="SHA-1 : Number of rounds (10-80)", dest='shaRounds')
+    parser.add_argument('--msgbits', type=int, default=498, help="SHA-1 : Number of fixed message bits (0-512) ", dest='shaMsgBits')
+    parser.add_argument('--hashbits', type=int, default=6, help="SHA-1 : Number of fixed hash bits (0-160) ", dest='fixedShaHashBits')
+    args = parser.parse_args()
+
+    barbarik(
+        eta=args.eta,
+        epsilon=args.epsilon,
+        delta=args.delta,
+        numExperiments=args.exp,
+        minSamples=args.minSamples,
+        maxSamples=args.maxSamples,
+        shaFlag=args.shaFlag,
+        seed=args.seed,
+        sampler=args.sampler,
+        inputFile=args.input,
+        searchOrder=args.searchOrder,
+        shaRounds=args.shaRounds,
+        shaMsgBits=args.shaMsgBits,
+        fixedShaHashBits=args.fixedShaHashBits
+        )
