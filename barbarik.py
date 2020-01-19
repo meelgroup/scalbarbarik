@@ -489,10 +489,10 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaConf, s
         sumNewVar = shaVars  # shift amount is sumNewVar
 
         newvar = diffIndex+sumNewVar
-        for content in chainFormulaConf.formulaContent:
+        for clause in chainFormulaConf.formulaContent:
             # TODO clean up
-            # replaces leading "1" with
-            shaCls += content.replace("1", str(newvar), 1)
+            # replaces leading "1" with newvar
+            shaCls += clause.replace("1", str(newvar), 1) + '\n'
             numSHACls += 1
         shaCls += "%d 1 0\n" % newvar  # set var 1 in SHA-1
         numSHACls += 1
