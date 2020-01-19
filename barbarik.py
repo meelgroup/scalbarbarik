@@ -32,7 +32,9 @@ SAMPLER_APPMC3 = 5
 SAMPLER_QUICKSAMPLER = 2
 SAMPLER_STS = 3
 SAMPLER_CMS = 4
+
 verbosity = False
+debug = False
 
 
 class ChainFormulaSetup:
@@ -637,7 +639,11 @@ def readHardFormulaShakuni(shaRounds, shaMsgBits, fixedShaHashBits):
     templist = []
     with open("tosample", 'r') as f:
         lines = f.readlines()
-    os.unlink("tosample")
+
+    if debug:
+        print("File generated: tosample")
+    else:
+        os.unlink("tosample")
 
     count = 0
     indList = []
@@ -800,6 +806,7 @@ def barbarik():
     parser.add_argument('--maxsamp', type=int, default=sys.maxsize, help="max samples", dest='maxSamples')
     parser.add_argument('--seed', type=int, required=True, dest='seed')
     parser.add_argument('--verb', type=int, dest='verbose')
+    parser.add_argument('--debug', type=int, dest='debug')
     parser.add_argument('--exp', type=int, help="number of experiments", dest='exp', default=1)
     parser.add_argument("input", help="input file")
     parser.add_argument('--shamix', type=int, default=1, help="SHA-1 usage. Set to 0 for no SHA-1", dest='shaFlag')
@@ -814,6 +821,9 @@ def barbarik():
     delta = args.delta
     global verbosity
     verbosity = args.verbose
+    global debug
+    debug = args.debug
+
     numExperiments = args.exp
     if numExperiments == -1:
         numExperiments = sys.maxsize
