@@ -617,16 +617,16 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaConf, s
         # f.write("c SHA content--\n")
         f.write(shaCls)
 
-    if verbosity >= 1:
+    if args.verbose:
         print("New file: ", tempFile)
     # exit(0)
 
     return True, tempIndVarList, oldIndVarList
 
 
-def readHardFormulaShakuni(shaRounds, shaMsgBits, fixedShaHashBits):
+def readHardFormulaShakuni(shaRounds, shaMsgBits, fixedShaHashBits, seed):
         # did experiments with shakuni seed 23
-    cmd = "./counter --seed 23 --rounds " + str(shaRounds)
+    cmd = "./counter --seed %d --rounds %d" % (seed, shaRounds)
     cmd += " --message-bits " + str(shaMsgBits)
     cmd += " --hash-bits " + str(fixedShaHashBits) + " > tosample"
     if args.verbose:
@@ -825,9 +825,6 @@ if __name__ == "__main__":
         exit(1)
 
     shaCNF = None
-    if args.shaFlag:
-        shaCNF = readHardFormulaShakuni(args.shaRounds, args.shaMsgBits, args.fixedShaHashBits)
-
     seed = args.seed
     random.seed(seed)
     minSamples = args.minSamples
@@ -871,6 +868,12 @@ if __name__ == "__main__":
             while i < tj and not breakExperiment:
                 i += 1
                 exp.randseed = int((tj*j)+i)
+
+                if args.shaFlag:
+                    shaCNF = readHardFormulaShakuni(
+                        args.shaRounds, args.shaMsgBits,
+                        args.fixedShaHashBits, exp.randseed)
+
                 ok, breakExperiment = exp.one_experiment(experiment, j, i, shaCNF)
 
                 if ok is None:
