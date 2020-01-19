@@ -18,6 +18,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
+# pylint: disable=invalid-name,line-too-long,too-many-locals
+
 from __future__ import print_function
 import sys
 import os
