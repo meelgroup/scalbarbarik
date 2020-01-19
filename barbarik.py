@@ -610,7 +610,7 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaConf, s
 def readHardFormulaShakuni(shaRounds, shaMsgBits, fixedShaHashBits):
         # did experiments with shakuni seed 23
     cmd = "./counter --seed 23 --rounds " + str(shaRounds)
-    cmd + " --message-bits " + str(shaMsgBits)
+    cmd += " --message-bits " + str(shaMsgBits)
     cmd += " --hash-bits " + str(fixedShaHashBits) + " > tosample"
 
     os.system(cmd)
