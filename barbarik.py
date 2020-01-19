@@ -621,7 +621,8 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaConf, s
         # f.write("c SHA content--\n")
         f.write(shaCls)
 
-    # print("New file: ", tempFile)
+    if verbosity >= 1:
+        print("New file: ", tempFile)
     # exit(0)
 
     return True, tempIndVarList, oldIndVarList
