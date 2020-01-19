@@ -33,10 +33,6 @@ SAMPLER_QUICKSAMPLER = 2
 SAMPLER_STS = 3
 SAMPLER_CMS = 4
 
-verbosity = False
-debug = False
-
-
 class ChainFormulaSetup:
     def __init__(self, countList, newVarList, indicatorLits):
         self.countList = countList
@@ -87,7 +83,7 @@ class SolutionRetriver:
 
         cmd = './samplers/unigen --samples='+str(numSolutions)
         cmd += ' ' + inputFile + ' ' + str(tempOutputFile) + ' > /dev/null 2>&1'
-        if verbosity > 0:
+        if args.verbose:
             print("cmd: ", cmd)
         os.system(cmd)
 
@@ -121,7 +117,7 @@ class SolutionRetriver:
         cmd = './samplers/approxmc3 -s ' + str(newSeed) + ' -v 0 --samples ' + str(numSolutions)
         cmd += ' --sampleout ' + str(tempOutputFile)
         cmd += ' ' + inputFile + ' > /dev/null 2>&1'
-        if verbosity > 0:
+        if args.verbose:
             print("cmd: ", cmd)
         os.system(cmd)
 
@@ -149,7 +145,7 @@ class SolutionRetriver:
     @staticmethod
     def getSolutionFromQuickSampler(inputFile, numSolutions, indVarList):
         cmd = "./samplers/quicksampler -n "+str(numSolutions*5)+' '+str(inputFile)+' > /dev/null 2>&1'
-        if verbosity > 0:
+        if args.verbose:
             print("cmd: ", cmd)
         os.system(cmd)
 
@@ -199,7 +195,7 @@ class SolutionRetriver:
         tempOutputFile = tempfile.gettempdir()+'/'+inputFileSuffix+".out"
         cmd = './samplers/spur -seed %d -q -s %d -out %s -cnf %s' % (
             newSeed, numSolutions, tempOutputFile, inputFile)
-        if verbosity > 0:
+        if args.verbose:
             print("cmd: ", cmd)
         os.system(cmd)
 
@@ -241,7 +237,7 @@ class SolutionRetriver:
         outputFile = tempfile.gettempdir()+'/'+inputFileSuffix+".out"
         cmd = './samplers/STS -k='+str(kValue)+' -nsamples='+str(samplingRounds)+' '+str(inputFile)
         cmd += ' > '+str(outputFile)
-        if verbosity > 0:
+        if args.verbose:
             print("cmd: ", cmd)
         os.system(cmd)
 
@@ -294,7 +290,7 @@ class SolutionRetriver:
         cmd += " " + inputFile
         cmd += " --dumpresult " + outputFile + " > /dev/null 2>&1"
 
-        if verbosity > 0:
+        if args.verbose:
             print("cmd: ", cmd)
         os.system(cmd)
 
@@ -633,7 +629,7 @@ def readHardFormulaShakuni(shaRounds, shaMsgBits, fixedShaHashBits):
     cmd = "./counter --seed 23 --rounds " + str(shaRounds)
     cmd += " --message-bits " + str(shaMsgBits)
     cmd += " --hash-bits " + str(fixedShaHashBits) + " > tosample"
-    if verbosity > 0:
+    if args.verbose:
         print("cmd: ", cmd)
 
     os.system(cmd)
@@ -641,7 +637,7 @@ def readHardFormulaShakuni(shaRounds, shaMsgBits, fixedShaHashBits):
     with open("tosample", 'r') as f:
         lines = f.readlines()
 
-    if debug:
+    if args.debug:
         print("File generated: tosample")
     else:
         os.unlink("tosample")
@@ -795,7 +791,7 @@ class Experiment:
         return True, False
 
 
-def barbarik():
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--eta', type=float, help="default = 0.9", default=0.9, dest='eta')
     parser.add_argument('--epsilon', type=float, help="default = 0.3", default=0.3, dest='epsilon')
@@ -820,10 +816,6 @@ def barbarik():
     eta = args.eta
     epsilon = args.epsilon
     delta = args.delta
-    global verbosity
-    verbosity = args.verbose
-    global debug
-    debug = args.debug
 
     numExperiments = args.exp
     if numExperiments == -1:
@@ -900,7 +892,3 @@ def barbarik():
                 exp.totalUniformSamples, experiment))
 
         breakExperiment = False
-
-
-if __name__ == "__main__":
-    barbarik()
