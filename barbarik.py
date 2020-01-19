@@ -195,7 +195,7 @@ class SolutionRetriver:
     def getSolutionFromSpur(inputFile, numSolutions, newSeed):
         inputFileSuffix = inputFile.split('/')[-1][:-4]
         tempOutputFile = tempfile.gettempdir()+'/'+inputFileSuffix+".out"
-        cmd = './samplers/spur -seed %d -q -s %d  -out %s  -cnf ' % (
+        cmd = './samplers/spur -seed %d -q -s %d -out %s -cnf %s' % (
             newSeed, numSolutions, tempOutputFile, inputFile)
         if verbosity > 0:
             print("cmd: ", cmd)
@@ -287,7 +287,7 @@ class SolutionRetriver:
         inputFileSuffix = inputFile.split('/')[-1][:-4]
         outputFile = tempfile.gettempdir()+'/'+inputFileSuffix+".out"
         cmd = "./samplers/cryptominisat5 --restart luby --maple 0 --verb 10 --nobansol"
-        cmd += " --scc 1 -n1 --presimp 0 --polar rnd --freq 0.9999 "
+        cmd += " --scc 1 -n1 --presimp 0 --polar rnd --freq 0.9999"
         cmd += " --random " + str(newSeed) + " --maxsol " + str(numSolutions)
         cmd += " " + inputFile
         cmd += " --dumpresult " + outputFile + " > /dev/null 2>&1"
