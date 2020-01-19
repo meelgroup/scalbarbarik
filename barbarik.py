@@ -184,7 +184,7 @@ class SolutionRetriver:
 
         if len(solList) != numSolutions:
             print("Did not find required number of solutions")
-            exit(1)
+            sys.exit(1)
         return solList
 
     @staticmethod
@@ -277,7 +277,7 @@ class SolutionRetriver:
         if len(solList) != numSolutions:
             print(len(solList))
             print("STS Did not find required number of solutions")
-            exit(1)
+            sys.exit(1)
 
         os.unlink(outputFile)
         return solList
@@ -319,7 +319,7 @@ class SolutionRetriver:
             solreturnList = random.sample(solList, numSolutions)
         if len(solList) < numSolutions:
             print("cryptominisat5 Did not find required number of solutions")
-            exit(1)
+            sys.exit(1)
         os.unlink(outputFile)
         return solreturnList
 
@@ -621,7 +621,7 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaConf, s
 
     if args.verbose:
         print("New file: ", tempFile)
-    # exit(0)
+    # sys.exit(0)
 
     return True, tempIndVarList, oldIndVarList
 
@@ -673,7 +673,7 @@ def readHardFormulaShakuni(shaRounds, shaMsgBits, fixedShaHashBits, seed):
 
     if solCount is None:
         print("ERROR: did not find 'c num_solutions' in the output of shakuni")
-        exit(-1)
+        sys.exit(-1)
 
     # set up indList
     if len(indList) == 0:
@@ -730,7 +730,7 @@ class Experiment:
 
         if not bool(solMap):
             print("No Solutions were given to the test")
-            exit(1)
+            sys.exit(1)
 
         key = next(iter(solMap))
 
@@ -759,7 +759,7 @@ class Experiment:
 
         # get uniform sampler's solutions
         unifSol = SolutionRetriver.getSolutionFromUniform(self.inputFile, 1, self.randseed)
-        assert(len(unifSol) == len(sampleSol))
+        assert len(unifSol) == len(sampleSol)
         self.totalUniformSamples += 1
         if shaCNF is not None:
             chainFormulaConf = shaCNF
@@ -806,7 +806,7 @@ def barbarik(eta, epsilon, delta, numExperiments, minSamples, maxSamples,
         numExperiments = sys.maxsize
     if 2*epsilon >= eta:
         print(" 2 * epsilon must be less than eta")
-        exit(1)
+        sys.exit(1)
 
     random.seed(seed)
     totalLoops = int(math.ceil(math.log(2.0/(eta+2*epsilon), 2))+1)
