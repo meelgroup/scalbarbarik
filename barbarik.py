@@ -188,14 +188,15 @@ class SolutionRetriver:
         return solList
 
     @staticmethod
-    def getSolutionFromUniform(inputFile, numSolutions):
-        return SolutionRetriver.getSolutionFromSpur(inputFile, numSolutions)
+    def getSolutionFromUniform(inputFile, numSolutions, newSeed):
+        return SolutionRetriver.getSolutionFromSpur(inputFile, numSolutions, newSeed)
 
     @staticmethod
-    def getSolutionFromSpur(inputFile, numSolutions):
+    def getSolutionFromSpur(inputFile, numSolutions, newSeed):
         inputFileSuffix = inputFile.split('/')[-1][:-4]
         tempOutputFile = tempfile.gettempdir()+'/'+inputFileSuffix+".out"
-        cmd = './spur -q -s '+str(numSolutions)+' -out '+str(tempOutputFile)+' -cnf '+str(inputFile)
+        cmd = './samplers/spur -seed %d -q -s %d  -out %s  -cnf ' % (
+            newSeed, numSolutions, tempOutputFile, inputFile)
         if verbosity > 0:
             print("cmd: ", cmd)
         os.system(cmd)
