@@ -357,6 +357,8 @@ def setupChainFormula(sampleSol, unifSol, numSolutions):
     newVarList = [4, 4, 4]
 
     # clean up the solutions
+    sampleSol=sampleSol[0] # sampleSol is a list and we are working here with index 0 only
+    unifSol=unifSol[0]
     sampleSol = sampleSol.strip()
     if sampleSol.endswith(' 0'):
         sampleSol = sampleSol[:-2]
@@ -374,14 +376,15 @@ def setupChainFormula(sampleSol, unifSol, numSolutions):
 
     # picking selector literals, i.e. k1, k2, k3, kN randomly
     sampleLitList = random.sample(sampleSol.split(), len(countList))
+    sampleLitList = [ int(x) for x in sampleLitList ] # we need in int not str
     unifLitList = []
     unifSolMap = unifSol.split()
     for lit in sampleLitList:
-        unifLitList.append(unifSolMap[abs(int(lit))-1])
+        unifLitList.append(int(unifSolMap[abs(int(lit))-1]))
 
     assert len(unifLitList) == len(sampleLitList)
     for a, b in zip(unifLitList, sampleLitList):
-        assert abs(a) == abs(b)
+        assert abs(a) == abs(b) # we need in int not str
 
     indicatorLits = []
     indicatorLits.append(sampleLitList)
@@ -831,7 +834,8 @@ def barbarik(eta, epsilon, delta, numExperiments, minSamples, maxSamples,
             beta = (math.pow(2, j-1)+1)*(eta + 2*epsilon)*1.0/(4+(2*epsilon+eta)*(math.pow(2, j-1) - 1))
             gamma = (beta-2*epsilon)/4
             constantFactor = math.ceil(1/(8.79*gamma*gamma))
-            boundFactor = math.log((16)*(math.e/(math.e-1))*(1/((eta-2*epsilon)**2))*math.log(4/(eta+2*epsilon), 2)*math.log(1/delta), 2)
+            # this Kuldeep and Priyanka verified before CAV submission. 
+            boundFactor = math.log((16)*(math.e/(math.e-1))*(1/(delta*(eta-2*epsilon)**2))*math.log(4/(eta+2*epsilon), 2)*math.log(1/delta), 2) 
             print("constantFactor:{:<4} boundFactor: {:<20} logBoundFactor: {:<20}".format(
                 constantFactor, boundFactor, math.log(boundFactor, 2)))
             print("tj: {:<6} totalLoops: {:<5} beta: {:<10} epsilon: {:<10}".format(
