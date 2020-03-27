@@ -169,6 +169,7 @@ class SolutionRetriver:
             fields = lines[j].strip().split(':')
             sol = ''
             i = 0
+            # valutions are 0 and 1 and in the same order as c ind.
             for x in list(fields[1].strip()):
                 if (x == '0'):
                     sol += ' -'+str(indVarList[i])
@@ -248,7 +249,7 @@ class SolutionRetriver:
 
         solList = []
         shouldStart = False
-        baseList = {}
+        #baseList = {}
         for j in range(len(lines)):
             if(lines[j].strip() == 'Outputting samples:' or lines[j].strip() == 'start'):
                 shouldStart = True
@@ -256,14 +257,15 @@ class SolutionRetriver:
             if (lines[j].strip().startswith('Log') or lines[j].strip() == 'end'):
                 shouldStart = False
             if (shouldStart):
-                i = 0
+                
 
-                if lines[j].strip() not in baseList:
+                '''if lines[j].strip() not in baseList:
                     baseList[lines[j].strip()] = 1
                 else:
-                    baseList[lines[j].strip()] += 1
+                    baseList[lines[j].strip()] += 1'''
                 sol = ''
-
+                i = 0
+                # valutions are 0 and 1 and in the same order as c ind.
                 for x in list(lines[j].strip()):
                     if (x == '0'):
                         sol += ' -'+str(indVarList[i])
@@ -376,7 +378,7 @@ def setupChainFormula(sampleSol, unifSol, numSolutions):
 
     # picking selector literals, i.e. k1, k2, k3, kN randomly
     sampleLitList = random.sample(sampleSol.split(), len(countList))
-    sampleLitList = [ int(x) for x in sampleLitList ] # we need in int not str
+    sampleLitList = [ int(x) for x in sampleLitList ] 
     unifLitList = []
     unifSolMap = unifSol.split()
     for lit in sampleLitList:
@@ -384,7 +386,7 @@ def setupChainFormula(sampleSol, unifSol, numSolutions):
 
     assert len(unifLitList) == len(sampleLitList)
     for a, b in zip(unifLitList, sampleLitList):
-        assert abs(a) == abs(b) # we need in int not str
+        assert abs(a) == abs(b) 
 
     indicatorLits = []
     indicatorLits.append(sampleLitList)
