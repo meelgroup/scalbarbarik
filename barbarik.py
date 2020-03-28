@@ -53,6 +53,53 @@ def get_sampler_string(samplerType):
     print("ERROR: unknown sampler type")
     exit(-1)
 
+
+def check_cnf(fname):
+    with open(fname, 'r') as f:
+        lines = f.readlines()
+
+    given_vars = None
+    given_cls = None
+    cls = 0
+    max_var = 0
+    for line in lines:
+        line = line.strip()
+
+        if len(line) == 0:
+            print("ERROR: CNF is incorrectly formatted, empty line!")
+            return False
+
+        line = line.split()
+        line = [l.strip() for l in line]
+
+        if line[0] == "p":
+            assert len(line) == 4
+            assert line[1] == "cnf"
+            given_vars = int(line[2])
+            given_cls = int(line[3])
+            continue
+
+        if line[0] == "c":
+            continue
+
+        cls +=1
+        for l in line:
+            var = abs(int(l))
+            max_var = max(var, max_var)
+
+    if max_var > given_vars:
+        print("ERROR: Number of variables given is LESS than the number of variables ued")
+        print("ERROR: Vars in header: %d   max var: %d" % (given_vars, max_var))
+        return False
+
+    if cls != given_cls:
+        print("ERROR: Number of clauses in header is DIFFERENT than the number of clauses in the CNF")
+        print("ERROR: Claues in header: %d   clauses: %d" % (given_cls, cls))
+        return False
+
+    return True
+
+
 class ChainFormulaSetup:
     def __init__(self, countList, newVarList, indicatorLits):
         self.countList = countList
@@ -74,6 +121,12 @@ class SolutionRetriver:
     @staticmethod
     def getSolutionFromSampler(inputFile, numSolutions, samplerType, indVarList, newSeed):
         topass_withseed = (inputFile, numSolutions, indVarList, newSeed)
+        ok = check_cnf(inputFile)
+        if not ok:
+            print("ERROR: CNF is malformatted. Sampler may give wrong solutions in this case. Exiting.")
+            print("File is: %s" % inputFile)
+            exit(-1)
+
 
         print("Using sampler: %s" % get_sampler_string(samplerType))
         if (samplerType == SAMPLER_UNIGEN):
