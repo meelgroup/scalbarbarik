@@ -35,6 +35,21 @@ SAMPLER_QUICKSAMPLER = 2
 SAMPLER_STS = 3
 SAMPLER_CMS = 4
 
+
+def get_sampler_string(samplerType):
+    if samplerType == SAMPLER_UNIGEN:
+        return 'UniGen'
+    if samplerType == SAMPLER_APPMC3:
+        return 'AppMC3'
+    if samplerType == SAMPLER_QUICKSAMPLER:
+        return 'QuickSampler'
+    if samplerType == SAMPLER_STS:
+        return 'STS'
+    if samplerType == SAMPLER_CMS:
+        return 'CustomSampler'
+    print("ERROR: unknown sampler type")
+    exit(-1)
+
 class ChainFormulaSetup:
     def __init__(self, countList, newVarList, indicatorLits):
         self.countList = countList
@@ -58,24 +73,36 @@ class SolutionRetriver:
         topass_withseed = (inputFile, numSolutions, indVarList, newSeed)
         topass = (inputFile, numSolutions, indVarList)
 
+        print("Using sampler: %s" % get_sampler_string(samplerType))
         if (samplerType == SAMPLER_UNIGEN):
-            return SolutionRetriver.getSolutionFromUniGen(*topass)
+            sols = SolutionRetriver.getSolutionFromUniGen(*topass)
 
-        if (samplerType == SAMPLER_APPMC3):
-            return SolutionRetriver.getSolutionFromAppMC3(*topass_withseed)
+        elif (samplerType == SAMPLER_APPMC3):
+            sols = SolutionRetriver.getSolutionFromAppMC3(*topass_withseed)
 
-        if (samplerType == SAMPLER_QUICKSAMPLER):
-            return SolutionRetriver.getSolutionFromQuickSampler(*topass)
+        elif (samplerType == SAMPLER_QUICKSAMPLER):
+            sols = SolutionRetriver.getSolutionFromQuickSampler(*topass)
 
-        if (samplerType == SAMPLER_STS):
-            return SolutionRetriver.getSolutionFromSTS(*topass)
+        elif (samplerType == SAMPLER_STS):
+            sols = SolutionRetriver.getSolutionFromSTS(*topass)
 
-        if (samplerType == SAMPLER_CMS):
-            return SolutionRetriver.getSolutionFromCMSsampler(*topass_withseed)
+        elif (samplerType == SAMPLER_CMS):
+            sols = SolutionRetriver.getSolutionFromCMSsampler(*topass_withseed)
 
         else:
-            print("Error")
-            return None
+            print("Error: No such sampler!")
+            exit(-1)
+
+        # clean up the solutions
+        for i in range(len(sols)):
+            sols[i] = sols[i].strip()
+            if sols[i].endswith(' 0'):
+                sols[i] = sols[i][:-2]
+
+        print("Number of solutions returned by sampler:", len(sols))
+        if args.verbose:
+            print("Solutions:", sols)
+        return sols
 
     @staticmethod
     def getSolutionFromUniGen(inputFile, numSolutions, indVarList):
@@ -357,16 +384,6 @@ def setupChainFormula(sampleSol, unifSol, numSolutions):
     # chain formula number of variables for each
     # TODO rename to chainVars
     newVarList = [4, 4, 4]
-
-    # clean up the solutions
-    sampleSol=sampleSol[0] # sampleSol is a list and we are working here with index 0 only
-    unifSol=unifSol[0]
-    sampleSol = sampleSol.strip()
-    if sampleSol.endswith(' 0'):
-        sampleSol = sampleSol[:-2]
-    unifSol = unifSol.strip()
-    if unifSol.endswith(' 0'):
-        unifSol = unifSol[:-2]
 
     # adding more chain formulas (at most 8 in total: 3 + 5)
     # these chain formulas will have 31 solutions over 6 variables
@@ -699,18 +716,7 @@ class Experiment:
         self.samplerType = samplerType
         self.maxSamples = maxSamples
         self.minSamples = minSamples
-
-        self.samplerString = None
-        if samplerType == SAMPLER_UNIGEN:
-            self.samplerString = 'UniGen'
-        if samplerType == SAMPLER_APPMC3:
-            self.samplerString = 'AppMC3'
-        if samplerType == SAMPLER_QUICKSAMPLER:
-            self.samplerString = 'QuickSampler'
-        if samplerType == SAMPLER_STS:
-            self.samplerString = 'STS'
-        if samplerType == SAMPLER_CMS:
-            self.samplerString = 'CustomSampler'
+        self.samplerString = get_sampler_string(samplerType)
 
     # Returns True if uniform and False otherwise
     def testUniformity(self, solList, indVarList):
