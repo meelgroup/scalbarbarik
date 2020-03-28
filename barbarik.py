@@ -441,17 +441,17 @@ def setupChainFormula(sampleSol, unifSol, numSolutions):
 
     # adding more chain formulas (at most 8 in total: 3 + 5)
     # these chain formulas will have 31 solutions over 6 variables
-    lenSol = len(sampleSol.split())
+    lenSol = len(sampleSol[0].split())
     for i in range(min(int(math.log(numSolutions, 2))+4, lenSol-3, 5)):
         countList.append(31)
         newVarList.append(6)
     assert len(countList) == len(newVarList)
 
     # picking selector literals, i.e. k1, k2, k3, kN randomly
-    sampleLitList = random.sample(sampleSol.split(), len(countList))
+    sampleLitList = random.sample(sampleSol[0].split(), len(countList))
     sampleLitList = [ int(x) for x in sampleLitList ] 
     unifLitList = []
-    unifSolMap = unifSol.split()
+    unifSolMap = unifSol[0].split()
     for lit in sampleLitList:
         unifLitList.append(int(unifSolMap[abs(int(lit))-1]))
 
@@ -567,7 +567,7 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaConf, s
             # TODO clean up
             # replaces leading "1" with newvar
             shaCls += clause.replace("1", str(newvar), 1) + '\n'
-            numSHACls += 1
+            #numSHACls += 1
         shaCls += "%d 1 0\n" % newvar  # set var 1 in SHA-1
         numSHACls += 1
 
