@@ -34,6 +34,7 @@ SAMPLER_APPMC3 = 5
 SAMPLER_QUICKSAMPLER = 2
 SAMPLER_STS = 3
 SAMPLER_CMS = 4
+SAMPLER_SPUR = 6
 
 
 def get_sampler_string(samplerType):
@@ -47,6 +48,8 @@ def get_sampler_string(samplerType):
         return 'STS'
     if samplerType == SAMPLER_CMS:
         return 'CustomSampler'
+    if samplerType == SAMPLER_SPUR:
+        return 'SPUR'
     print("ERROR: unknown sampler type")
     exit(-1)
 
@@ -71,23 +74,25 @@ class SolutionRetriver:
     @staticmethod
     def getSolutionFromSampler(inputFile, numSolutions, samplerType, indVarList, newSeed):
         topass_withseed = (inputFile, numSolutions, indVarList, newSeed)
-        topass = (inputFile, numSolutions, indVarList)
 
         print("Using sampler: %s" % get_sampler_string(samplerType))
         if (samplerType == SAMPLER_UNIGEN):
-            sols = SolutionRetriver.getSolutionFromUniGen(*topass)
+            sols = SolutionRetriver.getSolutionFromUniGen(*topass_withseed)
 
         elif (samplerType == SAMPLER_APPMC3):
             sols = SolutionRetriver.getSolutionFromAppMC3(*topass_withseed)
 
         elif (samplerType == SAMPLER_QUICKSAMPLER):
-            sols = SolutionRetriver.getSolutionFromQuickSampler(*topass)
+            sols = SolutionRetriver.getSolutionFromQuickSampler(*topass_withseed)
 
         elif (samplerType == SAMPLER_STS):
-            sols = SolutionRetriver.getSolutionFromSTS(*topass)
+            sols = SolutionRetriver.getSolutionFromSTS(*topass_withseed)
 
         elif (samplerType == SAMPLER_CMS):
             sols = SolutionRetriver.getSolutionFromCMSsampler(*topass_withseed)
+
+        elif (samplerType == SAMPLER_SPUR):
+            sols = SolutionRetriver.getSolutionFromSpur(*topass_withseed)
 
         else:
             print("Error: No such sampler!")
@@ -105,7 +110,7 @@ class SolutionRetriver:
         return sols
 
     @staticmethod
-    def getSolutionFromUniGen(inputFile, numSolutions, indVarList):
+    def getSolutionFromUniGen(inputFile, numSolutions, indVarList, newSeed):
         # must construct ./unigen --samples=500 --verbosity=0 --threads=1  CNF-FILE SAMPLESFILE
         inputFileSuffix = inputFile.split('/')[-1][:-4]
         tempOutputFile = tempfile.gettempdir()+'/'+inputFileSuffix+".txt"
@@ -172,7 +177,7 @@ class SolutionRetriver:
         return solreturnList
 
     @staticmethod
-    def getSolutionFromQuickSampler(inputFile, numSolutions, indVarList):
+    def getSolutionFromQuickSampler(inputFile, numSolutions, indVarList, newSeed):
         cmd = "./samplers/quicksampler -n "+str(numSolutions*5)+' '+str(inputFile)+' > /dev/null 2>&1'
         if args.verbose:
             print("cmd: ", cmd)
@@ -216,11 +221,7 @@ class SolutionRetriver:
         return solList
 
     @staticmethod
-    def getSolutionFromUniform(inputFile, numSolutions, newSeed):
-        return SolutionRetriver.getSolutionFromSpur(inputFile, numSolutions, newSeed)
-
-    @staticmethod
-    def getSolutionFromSpur(inputFile, numSolutions, newSeed):
+    def getSolutionFromSpur(inputFile, numSolutions, indVarList, newSeed):
         inputFileSuffix = inputFile.split('/')[-1][:-4]
         tempOutputFile = tempfile.gettempdir()+'/'+inputFileSuffix+".out"
         cmd = './samplers/spur -seed %d -q -s %d -out %s -cnf %s' % (
@@ -260,7 +261,7 @@ class SolutionRetriver:
         return solList
 
     @staticmethod
-    def getSolutionFromSTS(inputFile, numSolutions, indVarList):
+    def getSolutionFromSTS(inputFile, numSolutions, indVarList, newSeed):
         kValue = 50
         samplingRounds = numSolutions/kValue + 1
         inputFileSuffix = inputFile.split('/')[-1][:-4]
@@ -769,7 +770,9 @@ class Experiment:
         self.totalSolutionsGenerated += 1
 
         # get uniform sampler's solutions
-        unifSol = SolutionRetriver.getSolutionFromUniform(self.inputFile, 1, self.randseed)
+        unifSol = SolutionRetriver.getSolutionFromSampler(
+            self.inputFile, 1, SAMPLER_SPUR, self.indVarList, self.randseed)
+
         assert len(unifSol) == len(sampleSol)
         self.totalUniformSamples += 1
         if shaCNF is not None:
