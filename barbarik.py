@@ -330,7 +330,6 @@ class SolutionRetriver:
 
         solList = []
         shouldStart = False
-        #baseList = {}
         for j in range(len(lines)):
             if(lines[j].strip() == 'Outputting samples:' or lines[j].strip() == 'start'):
                 shouldStart = True
@@ -339,11 +338,6 @@ class SolutionRetriver:
                 shouldStart = False
             if (shouldStart):
                 
-
-                '''if lines[j].strip() not in baseList:
-                    baseList[lines[j].strip()] = 1
-                else:
-                    baseList[lines[j].strip()] += 1'''
                 sol = ''
                 i = 0
                 # valutions are 0 and 1 and in the same order as c ind.
@@ -457,7 +451,7 @@ def setupChainFormula(sampleSol, unifSol, numSolutions):
 
     assert len(unifLitList) == len(sampleLitList)
     for a, b in zip(unifLitList, sampleLitList):
-        assert abs(a) == abs(b) 
+        assert abs(a) == abs(b)
 
     indicatorLits = []
     indicatorLits.append(sampleLitList)
@@ -567,7 +561,6 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaConf, s
             # TODO clean up
             # replaces leading "1" with newvar
             shaCls += clause.replace("1", str(newvar), 1) + '\n'
-            #numSHACls += 1
         shaCls += "%d 1 0\n" % newvar  # set var 1 in SHA-1
         numSHACls += 1
 
