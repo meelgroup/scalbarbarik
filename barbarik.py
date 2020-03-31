@@ -34,6 +34,71 @@ SAMPLER_APPMC3 = 5
 SAMPLER_QUICKSAMPLER = 2
 SAMPLER_STS = 3
 SAMPLER_CMS = 4
+SAMPLER_SPUR = 6
+
+
+def get_sampler_string(samplerType):
+    if samplerType == SAMPLER_UNIGEN:
+        return 'UniGen'
+    if samplerType == SAMPLER_APPMC3:
+        return 'AppMC3'
+    if samplerType == SAMPLER_QUICKSAMPLER:
+        return 'QuickSampler'
+    if samplerType == SAMPLER_STS:
+        return 'STS'
+    if samplerType == SAMPLER_CMS:
+        return 'CustomSampler'
+    if samplerType == SAMPLER_SPUR:
+        return 'SPUR'
+    print("ERROR: unknown sampler type")
+    exit(-1)
+
+
+def check_cnf(fname):
+    with open(fname, 'r') as f:
+        lines = f.readlines()
+
+    given_vars = None
+    given_cls = None
+    cls = 0
+    max_var = 0
+    for line in lines:
+        line = line.strip()
+
+        if len(line) == 0:
+            print("ERROR: CNF is incorrectly formatted, empty line!")
+            return False
+
+        line = line.split()
+        line = [l.strip() for l in line]
+
+        if line[0] == "p":
+            assert len(line) == 4
+            assert line[1] == "cnf"
+            given_vars = int(line[2])
+            given_cls = int(line[3])
+            continue
+
+        if line[0] == "c":
+            continue
+
+        cls +=1
+        for l in line:
+            var = abs(int(l))
+            max_var = max(var, max_var)
+
+    if max_var > given_vars:
+        print("ERROR: Number of variables given is LESS than the number of variables ued")
+        print("ERROR: Vars in header: %d   max var: %d" % (given_vars, max_var))
+        return False
+
+    if cls != given_cls:
+        print("ERROR: Number of clauses in header is DIFFERENT than the number of clauses in the CNF")
+        print("ERROR: Claues in header: %d   clauses: %d" % (given_cls, cls))
+        return False
+
+    return True
+
 
 class ChainFormulaSetup:
     def __init__(self, countList, newVarList, indicatorLits):
@@ -56,29 +121,49 @@ class SolutionRetriver:
     @staticmethod
     def getSolutionFromSampler(inputFile, numSolutions, samplerType, indVarList, newSeed):
         topass_withseed = (inputFile, numSolutions, indVarList, newSeed)
-        topass = (inputFile, numSolutions, indVarList)
+        ok = check_cnf(inputFile)
+        if not ok:
+            print("ERROR: CNF is malformatted. Sampler may give wrong solutions in this case. Exiting.")
+            print("File is: %s" % inputFile)
+            exit(-1)
 
+
+        print("Using sampler: %s" % get_sampler_string(samplerType))
         if (samplerType == SAMPLER_UNIGEN):
-            return SolutionRetriver.getSolutionFromUniGen(*topass)
+            sols = SolutionRetriver.getSolutionFromUniGen(*topass_withseed)
 
-        if (samplerType == SAMPLER_APPMC3):
-            return SolutionRetriver.getSolutionFromAppMC3(*topass_withseed)
+        elif (samplerType == SAMPLER_APPMC3):
+            sols = SolutionRetriver.getSolutionFromAppMC3(*topass_withseed)
 
-        if (samplerType == SAMPLER_QUICKSAMPLER):
-            return SolutionRetriver.getSolutionFromQuickSampler(*topass)
+        elif (samplerType == SAMPLER_QUICKSAMPLER):
+            sols = SolutionRetriver.getSolutionFromQuickSampler(*topass_withseed)
 
-        if (samplerType == SAMPLER_STS):
-            return SolutionRetriver.getSolutionFromSTS(*topass)
+        elif (samplerType == SAMPLER_STS):
+            sols = SolutionRetriver.getSolutionFromSTS(*topass_withseed)
 
-        if (samplerType == SAMPLER_CMS):
-            return SolutionRetriver.getSolutionFromCMSsampler(*topass_withseed)
+        elif (samplerType == SAMPLER_CMS):
+            sols = SolutionRetriver.getSolutionFromCMSsampler(*topass_withseed)
+
+        elif (samplerType == SAMPLER_SPUR):
+            sols = SolutionRetriver.getSolutionFromSpur(*topass_withseed)
 
         else:
-            print("Error")
-            return None
+            print("Error: No such sampler!")
+            exit(-1)
+
+        # clean up the solutions
+        for i in range(len(sols)):
+            sols[i] = sols[i].strip()
+            if sols[i].endswith(' 0'):
+                sols[i] = sols[i][:-2]
+
+        print("Number of solutions returned by sampler:", len(sols))
+        if args.verbose:
+            print("Solutions:", sols)
+        return sols
 
     @staticmethod
-    def getSolutionFromUniGen(inputFile, numSolutions, indVarList):
+    def getSolutionFromUniGen(inputFile, numSolutions, indVarList, newSeed):
         # must construct ./unigen --samples=500 --verbosity=0 --threads=1  CNF-FILE SAMPLESFILE
         inputFileSuffix = inputFile.split('/')[-1][:-4]
         tempOutputFile = tempfile.gettempdir()+'/'+inputFileSuffix+".txt"
@@ -145,7 +230,7 @@ class SolutionRetriver:
         return solreturnList
 
     @staticmethod
-    def getSolutionFromQuickSampler(inputFile, numSolutions, indVarList):
+    def getSolutionFromQuickSampler(inputFile, numSolutions, indVarList, newSeed):
         cmd = "./samplers/quicksampler -n "+str(numSolutions*5)+' '+str(inputFile)+' > /dev/null 2>&1'
         if args.verbose:
             print("cmd: ", cmd)
@@ -169,6 +254,7 @@ class SolutionRetriver:
             fields = lines[j].strip().split(':')
             sol = ''
             i = 0
+            # valutions are 0 and 1 and in the same order as c ind.
             for x in list(fields[1].strip()):
                 if (x == '0'):
                     sol += ' -'+str(indVarList[i])
@@ -188,11 +274,7 @@ class SolutionRetriver:
         return solList
 
     @staticmethod
-    def getSolutionFromUniform(inputFile, numSolutions, newSeed):
-        return SolutionRetriver.getSolutionFromSpur(inputFile, numSolutions, newSeed)
-
-    @staticmethod
-    def getSolutionFromSpur(inputFile, numSolutions, newSeed):
+    def getSolutionFromSpur(inputFile, numSolutions, indVarList, newSeed):
         inputFileSuffix = inputFile.split('/')[-1][:-4]
         tempOutputFile = tempfile.gettempdir()+'/'+inputFileSuffix+".out"
         cmd = './samplers/spur -seed %d -q -s %d -out %s -cnf %s' % (
@@ -232,7 +314,7 @@ class SolutionRetriver:
         return solList
 
     @staticmethod
-    def getSolutionFromSTS(inputFile, numSolutions, indVarList):
+    def getSolutionFromSTS(inputFile, numSolutions, indVarList, newSeed):
         kValue = 50
         samplingRounds = numSolutions/kValue + 1
         inputFileSuffix = inputFile.split('/')[-1][:-4]
@@ -248,7 +330,6 @@ class SolutionRetriver:
 
         solList = []
         shouldStart = False
-        baseList = {}
         for j in range(len(lines)):
             if(lines[j].strip() == 'Outputting samples:' or lines[j].strip() == 'start'):
                 shouldStart = True
@@ -256,14 +337,10 @@ class SolutionRetriver:
             if (lines[j].strip().startswith('Log') or lines[j].strip() == 'end'):
                 shouldStart = False
             if (shouldStart):
-                i = 0
-
-                if lines[j].strip() not in baseList:
-                    baseList[lines[j].strip()] = 1
-                else:
-                    baseList[lines[j].strip()] += 1
+                
                 sol = ''
-
+                i = 0
+                # valutions are 0 and 1 and in the same order as c ind.
                 for x in list(lines[j].strip()):
                     if (x == '0'):
                         sol += ' -'+str(indVarList[i])
@@ -356,28 +433,21 @@ def setupChainFormula(sampleSol, unifSol, numSolutions):
     # TODO rename to chainVars
     newVarList = [4, 4, 4]
 
-    # clean up the solutions
-    sampleSol = sampleSol.strip()
-    if sampleSol.endswith(' 0'):
-        sampleSol = sampleSol[:-2]
-    unifSol = unifSol.strip()
-    if unifSol.endswith(' 0'):
-        unifSol = unifSol[:-2]
-
     # adding more chain formulas (at most 8 in total: 3 + 5)
     # these chain formulas will have 31 solutions over 6 variables
-    lenSol = len(sampleSol.split())
+    lenSol = len(sampleSol[0].split())
     for i in range(min(int(math.log(numSolutions, 2))+4, lenSol-3, 5)):
         countList.append(31)
         newVarList.append(6)
     assert len(countList) == len(newVarList)
 
     # picking selector literals, i.e. k1, k2, k3, kN randomly
-    sampleLitList = random.sample(sampleSol.split(), len(countList))
+    sampleLitList = random.sample(sampleSol[0].split(), len(countList))
+    sampleLitList = [ int(x) for x in sampleLitList ] 
     unifLitList = []
-    unifSolMap = unifSol.split()
+    unifSolMap = unifSol[0].split()
     for lit in sampleLitList:
-        unifLitList.append(unifSolMap[abs(int(lit))-1])
+        unifLitList.append(int(unifSolMap[abs(int(lit))-1]))
 
     assert len(unifLitList) == len(sampleLitList)
     for a, b in zip(unifLitList, sampleLitList):
@@ -491,7 +561,6 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaConf, s
             # TODO clean up
             # replaces leading "1" with newvar
             shaCls += clause.replace("1", str(newvar), 1) + '\n'
-            numSHACls += 1
         shaCls += "%d 1 0\n" % newvar  # set var 1 in SHA-1
         numSHACls += 1
 
@@ -694,18 +763,7 @@ class Experiment:
         self.samplerType = samplerType
         self.maxSamples = maxSamples
         self.minSamples = minSamples
-
-        self.samplerString = None
-        if samplerType == SAMPLER_UNIGEN:
-            self.samplerString = 'UniGen'
-        if samplerType == SAMPLER_APPMC3:
-            self.samplerString = 'AppMC3'
-        if samplerType == SAMPLER_QUICKSAMPLER:
-            self.samplerString = 'QuickSampler'
-        if samplerType == SAMPLER_STS:
-            self.samplerString = 'STS'
-        if samplerType == SAMPLER_CMS:
-            self.samplerString = 'CustomSampler'
+        self.samplerString = get_sampler_string(samplerType)
 
     # Returns True if uniform and False otherwise
     def testUniformity(self, solList, indVarList):
@@ -758,7 +816,9 @@ class Experiment:
         self.totalSolutionsGenerated += 1
 
         # get uniform sampler's solutions
-        unifSol = SolutionRetriver.getSolutionFromUniform(self.inputFile, 1, self.randseed)
+        unifSol = SolutionRetriver.getSolutionFromSampler(
+            self.inputFile, 1, SAMPLER_SPUR, self.indVarList, self.randseed)
+
         assert len(unifSol) == len(sampleSol)
         self.totalUniformSamples += 1
         if shaCNF is not None:
@@ -831,7 +891,8 @@ def barbarik(eta, epsilon, delta, numExperiments, minSamples, maxSamples,
             beta = (math.pow(2, j-1)+1)*(eta + 2*epsilon)*1.0/(4+(2*epsilon+eta)*(math.pow(2, j-1) - 1))
             gamma = (beta-2*epsilon)/4
             constantFactor = math.ceil(1/(8.79*gamma*gamma))
-            boundFactor = math.log((16)*(math.e/(math.e-1))*(1/((eta-2*epsilon)**2))*math.log(4/(eta+2*epsilon), 2)*math.log(1/delta), 2)
+            # this Kuldeep and Priyanka verified before CAV submission. 
+            boundFactor = math.log((16)*(math.e/(math.e-1))*(1/(delta*(eta-2*epsilon)**2))*math.log(4/(eta+2*epsilon), 2)*math.log(1/delta), 2) 
             print("constantFactor:{:<4} boundFactor: {:<20} logBoundFactor: {:<20}".format(
                 constantFactor, boundFactor, math.log(boundFactor, 2)))
             print("tj: {:<6} totalLoops: {:<5} beta: {:<10} epsilon: {:<10}".format(
