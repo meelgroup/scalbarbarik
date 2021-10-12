@@ -33,15 +33,15 @@ SAMPLER_UNIGEN = 1
 SAMPLER_QUICKSAMPLER = 2
 SAMPLER_STS = 3
 SAMPLER_CMS = 4
-SAMPLER_APPMC3 = 5
+SAMPLER_UNIGEN3 = 5
 SAMPLER_SPUR = 6
 
 
 def get_sampler_string(samplerType):
     if samplerType == SAMPLER_UNIGEN:
         return 'UniGen'
-    if samplerType == SAMPLER_APPMC3:
-        return 'AppMC3'
+    if samplerType == SAMPLER_UNIGEN3:
+        return 'UniGen3'
     if samplerType == SAMPLER_QUICKSAMPLER:
         return 'QuickSampler'
     if samplerType == SAMPLER_STS:
@@ -132,8 +132,8 @@ class SolutionRetriver:
         if (samplerType == SAMPLER_UNIGEN):
             sols = SolutionRetriver.getSolutionFromUniGen(*topass_withseed)
 
-        elif (samplerType == SAMPLER_APPMC3):
-            sols = SolutionRetriver.getSolutionFromAppMC3(*topass_withseed)
+        elif (samplerType == SAMPLER_UNIGEN3):
+            sols = SolutionRetriver.getSolutionFromUniGen3(*topass_withseed)
 
         elif (samplerType == SAMPLER_QUICKSAMPLER):
             sols = SolutionRetriver.getSolutionFromQuickSampler(*topass_withseed)
@@ -196,12 +196,12 @@ class SolutionRetriver:
         return solreturnList
 
     @staticmethod
-    def getSolutionFromAppMC3(inputFile, numSolutions, indVarList, newSeed):
+    def getSolutionFromUniGen3(inputFile, numSolutions, indVarList, newSeed):
         # must construct: ./approxmc3 -s 1 -v2 --sampleout /dev/null --samples 500
         inputFileSuffix = inputFile.split('/')[-1][:-4]
         tempOutputFile = tempfile.gettempdir()+'/'+inputFileSuffix+".txt"
 
-        cmd = './samplers/approxmc3 -s ' + str(newSeed) + ' -v 0 --samples ' + str(numSolutions)
+        cmd = './samplers/unigen3 -s ' + str(newSeed) + ' -v 0 --samples ' + str(numSolutions)
         cmd += ' --sampleout ' + str(tempOutputFile)
         cmd += ' ' + inputFile + ' > /dev/null 2>&1'
         if args.verbose:
@@ -210,21 +210,18 @@ class SolutionRetriver:
 
         with open(tempOutputFile, 'r') as f:
             lines = f.readlines()
+        
 
         solList = []
         for line in lines:
-            line = line.strip()
-            freq = int(line.split(':')[0])
-            for i in range(freq):
-                solList.append(line.split(':')[1].strip())
-                if len(solList) == numSolutions:
-                    break
-            if len(solList) == numSolutions:
-                break
+            line = line.strip("0\n")
+            solList.append(line)
+        
 
         solreturnList = solList
         if len(solList) > numSolutions:
             solreturnList = random.sample(solList, numSolutions)
+    
 
         os.unlink(str(tempOutputFile))
         return solreturnList
@@ -652,6 +649,14 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaConf, s
     indIter = 1
     indStr = 'c ind '
 
+    # old independent var list
+    for i in oldIndVarList:
+        if indIter % 10 == 0:
+            indStr += ' 0\nc ind '
+        indStr += "%d " % i
+        indIter += 1
+    
+
     # new independent var list
     if shaFlag:
         goThrough = shaCInd
@@ -663,13 +668,7 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaConf, s
         indStr += "%d " % i
         indIter += 1
         tempIndVarList.append(i)
-
-    # old independent var list
-    for i in oldIndVarList:
-        if indIter % 10 == 0:
-            indStr += ' 0\nc ind '
-        indStr += "%d " % i
-        indIter += 1
+    
     indStr += ' 0\n'
 
     # update vars, clauses
