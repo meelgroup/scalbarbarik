@@ -357,8 +357,8 @@ class SolutionRetriver:
 	def getSolutionFromCMSsampler(inputFile, numSolutions, indVarList, newSeed):
 		inputFileSuffix = inputFile.split('/')[-1][:-4]
 		outputFile = tempfile.gettempdir()+'/'+inputFileSuffix+".out"
-		cmd = "./samplers/cryptominisat5 --restart luby --maple 0 --verb 10 --nobansol"
-		cmd += " --scc 1 -n1 --presimp 0 --polar rnd --freq 0.9999"
+		cmd = "./samplers/cmsgen --restart fixed --maple 0 --verb 0 --nobansol"
+		cmd += " --scc 1 -n1 --presimp 0 --polar rnd --freq 0.9999 --fixedconfl " + str(args.fixedconf)
 		cmd += " --random " + str(newSeed) + " --maxsol " + str(numSolutions)
 		cmd += " " + inputFile
 		cmd += " --dumpresult " + outputFile + " > /dev/null 2>&1"
@@ -389,7 +389,7 @@ class SolutionRetriver:
 		if len(solList) > numSolutions:
 			solreturnList = random.sample(solList, numSolutions)
 		if len(solList) < numSolutions:
-			print("cryptominisat5 Did not find required number of solutions")
+			print("cmsgen Did not find required number of solutions")
 			sys.exit(1)
 		os.unlink(outputFile)
 		return solreturnList
@@ -953,6 +953,7 @@ if __name__ == "__main__":
 	parser.add_argument('--rounds', type=int, default=10, help="SHA-1 : Number of rounds (10-80)", dest='shaRounds')
 	parser.add_argument('--msgbits', type=int, default=498, help="SHA-1 : Number of fixed message bits (0-512) ", dest='shaMsgBits')
 	parser.add_argument('--hashbits', type=int, default=6, help="SHA-1 : Number of fixed hash bits (0-160) ", dest='fixedShaHashBits')
+	parser.add_argument('--fixedconf', type=int, default=100, help="static restart point for cmsgen, choice 100,500 ", dest='fixedconf')
 	args = parser.parse_args()
 
 	barbarik(
