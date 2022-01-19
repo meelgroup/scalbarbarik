@@ -312,7 +312,7 @@ class SolutionRetriver:
 		samplingRounds = numSolutions/kValue + 1
 		inputFileSuffix = inputFile.split('/')[-1][:-4]
 		outputFile = tempfile.gettempdir()+'/'+inputFileSuffix+".out"
-		cmd = './samplers/STS -k='+str(kValue)+' -nsamples='+str(samplingRounds)+' '+str(inputFile)
+		cmd = './samplers/STS -k='+str(kValue)+' -rnd-seed='+str(newSeed)+' -nsamples='+str(samplingRounds)+' '+str(inputFile)
 		cmd += ' > '+str(outputFile)
 		if args.verbose:
 			print("cmd: ", cmd)
@@ -828,6 +828,8 @@ class Experiment:
 		# the two solutions were the same, couldn't construct CNF
 		if not shakuniMix:
 			return False, None
+
+		self.randseed += 1
 
 		# get sampler's solutions
 		solList = SolutionRetriver.getSolutionFromSampler(
