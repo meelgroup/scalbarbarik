@@ -1,6 +1,6 @@
 # ScalBarbarik, a testing framework for (almost) uniform samplers
 
-Barbarik is a framework developed to test whether a sampler is almost uniform or not. It uses SPUR as the underlying uniform sampler. This work is by Kuldeep Meel and Sourav Chakraborty, as published in [AAAI'19](https://www.comp.nus.edu.sg/~meel/Papers/aaai19-cm.pdf).
+ScalBarbarik is a  computational hardness based framework developed to test whether a sampler is almost uniform or not. It uses SPUR as the underlying uniform sampler.  This work is build on top of [Barbarik](https://www.comp.nus.edu.sg/~meel/Papers/aaai19-cm.pdf).  For more details checkout the our [CP-paper](https://priyanka-golia.github.io/files/publications/cp22_shakuni.pdf).
 
 ## Getting Started
 
@@ -34,10 +34,16 @@ To run a custom sampler, make appropriate changes to the code -- look for the fo
 
 ## How to Cite
 
-If you use Barbarik, please cite the following paper : [AAAI'19](https://www.comp.nus.edu.sg/~meel/Papers/aaai19-cm.pdf). Here is [BIB file](https://www.comp.nus.edu.sg/~meel/bib/CM19.bib)
+@inproceedings{SGCM22,
+author={Soos, Mate and Priyanka, Golia and Sourav, Chakraborty and Meel, Kuldeep S.},
+title={On Quantitative Testing of Samplers},
+booktitle={Principles and Practice of Constraint Programming},
+year={2022}
+}
 
 ## Contributors
 1. Kuldeep S. Meel
 2. Shayak Chakraborty 
 3. Yash Pote
 4. Mate Soos
+5. Priyanka Golia
