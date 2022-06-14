@@ -1,6 +1,6 @@
 # ScalBarbarik, a testing framework for (almost) uniform samplers
 
-ScalBarbarik is a  computational hardness based framework developed to test whether a sampler is almost uniform or not. It uses SPUR as the underlying uniform sampler.  This work is build on top of [Barbarik](https://www.comp.nus.edu.sg/~meel/Papers/aaai19-cm.pdf).  For more details checkout the our [CP-paper](https://priyanka-golia.github.io/files/publications/cp22_shakuni.pdf).
+ScalBarbarik is a  computational hardness based framework developed to test whether a sampler is almost uniform or not. It uses SPUR as the underlying uniform sampler.  This work is build on top of [Barbarik](https://www.comp.nus.edu.sg/~meel/Papers/aaai19-cm.pdf).  For more details checkout our [CP-paper](https://priyanka-golia.github.io/files/publications/cp22_shakuni.pdf).
 
 ## Getting Started
 
