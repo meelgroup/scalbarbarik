@@ -34,12 +34,14 @@ To run a custom sampler, make appropriate changes to the code -- look for the fo
 
 ## How to Cite
 
+```
 @inproceedings{SGCM22,
 author={Soos, Mate and Priyanka, Golia and Sourav, Chakraborty and Meel, Kuldeep S.},
 title={On Quantitative Testing of Samplers},
 booktitle={Principles and Practice of Constraint Programming},
 year={2022}
 }
+```
 
 ## Contributors
 1. Kuldeep S. Meel
