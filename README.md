@@ -43,9 +43,3 @@ year={2022}
 }
 ```
 
-## Contributors
-1. Kuldeep S. Meel
-2. Shayak Chakraborty 
-3. Yash Pote
-4. Mate Soos
-5. Priyanka Golia

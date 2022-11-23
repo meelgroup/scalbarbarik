@@ -337,7 +337,7 @@ class SolutionRetriver:
             if (lines[j].strip().startswith('Log') or lines[j].strip() == 'end'):
                 shouldStart = False
             if (shouldStart):
-                
+
                 sol = ''
                 i = 0
                 # valutions are 0 and 1 and in the same order as c ind.
@@ -443,7 +443,7 @@ def setupChainFormula(sampleSol, unifSol, numSolutions):
 
     # picking selector literals, i.e. k1, k2, k3, kN randomly
     sampleLitList = random.sample(sampleSol[0].split(), len(countList))
-    sampleLitList = [ int(x) for x in sampleLitList ] 
+    sampleLitList = [ int(x) for x in sampleLitList ]
     unifLitList = []
     unifSolMap = unifSol[0].split()
     for lit in sampleLitList:
@@ -697,7 +697,7 @@ def constructNewCNF(inputFile, tempFile, sampleSol, unifSol, chainFormulaConf, s
 
 def readHardFormulaShakuni(shaRounds, shaMsgBits, fixedShaHashBits, seed):
         # did experiments with shakuni seed 23
-    cmd = "./counter --seed %d --rounds %d" % (seed, shaRounds)
+    cmd = "./cnf_gen --seed %d --rounds %d" % (seed, shaRounds)
     cmd += " --message-bits " + str(shaMsgBits)
     cmd += " --hash-bits " + str(fixedShaHashBits) + " > tosample"
     if args.verbose:
@@ -891,8 +891,8 @@ def barbarik(eta, epsilon, delta, numExperiments, minSamples, maxSamples,
             beta = (math.pow(2, j-1)+1)*(eta + 2*epsilon)*1.0/(4+(2*epsilon+eta)*(math.pow(2, j-1) - 1))
             gamma = (beta-2*epsilon)/4
             constantFactor = math.ceil(1/(8.79*gamma*gamma))
-            # this Kuldeep and Priyanka verified before CAV submission. 
-            boundFactor = math.log((16)*(math.e/(math.e-1))*(1/(delta*(eta-2*epsilon)**2))*math.log(4/(eta+2*epsilon), 2)*math.log(1/delta), 2) 
+            # this Kuldeep and Priyanka verified before CAV submission.
+            boundFactor = math.log((16)*(math.e/(math.e-1))*(1/(delta*(eta-2*epsilon)**2))*math.log(4/(eta+2*epsilon), 2)*math.log(1/delta), 2)
             print("constantFactor:{:<4} boundFactor: {:<20} logBoundFactor: {:<20}".format(
                 constantFactor, boundFactor, math.log(boundFactor, 2)))
             print("tj: {:<6} totalLoops: {:<5} beta: {:<10} epsilon: {:<10}".format(
